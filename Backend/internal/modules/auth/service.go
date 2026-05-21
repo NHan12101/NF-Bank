@@ -15,6 +15,7 @@ import (
 	"bank-service/internal/infrastructure/email"
 	jwtProvider "bank-service/internal/infrastructure/jwt"
 	"bank-service/internal/modules/account"
+	"bank-service/internal/modules/user"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -26,6 +27,7 @@ type Service struct {
 	verifyRegisterRepo *VerifyRegisterRepository
 	emailSender        *email.Sender
 	accountService     *account.Service
+	userService        *user.Service
 	cfg                *config.Config
 }
 
@@ -36,6 +38,7 @@ func NewService(
 	verifyRegisterRepo *VerifyRegisterRepository,
 	emailSender *email.Sender,
 	accountService *account.Service,
+	userService *user.Service,
 	cfg *config.Config,
 ) *Service {
 	return &Service{
@@ -43,6 +46,7 @@ func NewService(
 		otpRepo:            otpRepo,
 		accountService:     accountService,
 		emailSender:        emailSender,
+		userService:        userService,
 		cfg:                cfg,
 		verifyRegisterRepo: verifyRegisterRepo,
 	}

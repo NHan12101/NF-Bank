@@ -11,6 +11,7 @@ import (
 	"bank-service/internal/infrastructure/email"
 	"bank-service/internal/modules/account"
 	"bank-service/internal/modules/auth"
+	"bank-service/internal/modules/user"
 
 	"github.com/gin-gonic/gin"
 )
@@ -29,6 +30,7 @@ func main() {
 		&auth.User{},
 		&auth.RefreshToken{},
 		&account.Account{},
+		&user.UserProfile{},
 	); err != nil {
 		log.Fatalf("❌ MySQL Auto Migration thất bại: %v", err)
 	}
@@ -67,21 +69,28 @@ func main() {
 
 	accountRepo := account.NewRepository(database.DB)
 	accountService := account.NewService(accountRepo)
+
+	userRepo := user.NewRepository(database.DB)
+	userService := user.NewService(userRepo)
+
 	authService := auth.NewService(
 		authRepo,
 		otpRepo,
 		verifyRegisterRepo,
 		emailSender,
 		accountService,
+		userService,
 		cfg,
 	)
 	authHandler := auth.NewHandler(authService)
 
 	accountHandler := account.NewHandler(accountService)
+	userHandler := user.NewHandler(userService)
 
 	api := r.Group("/api/v1")
 	auth.RegisterRoutes(api, authHandler)
 	account.RegisterRoutes(api, accountHandler, cfg)
+	user.RegisterRoutes(api, userHandler, cfg)
 
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{
