@@ -10,6 +10,7 @@ import (
 	"bank-service/internal/database"
 	"bank-service/internal/infrastructure/email"
 	"bank-service/internal/modules/account"
+	"bank-service/internal/modules/admin"
 	"bank-service/internal/modules/auth"
 	"bank-service/internal/modules/user"
 
@@ -87,10 +88,15 @@ func main() {
 	accountHandler := account.NewHandler(accountService)
 	userHandler := user.NewHandler(userService)
 
+	adminRepo := admin.NewRepository(database.DB)
+	adminService := admin.NewService(adminRepo)
+	adminHandler := admin.NewHandler(adminService)
+
 	api := r.Group("/api/v1")
 	auth.RegisterRoutes(api, authHandler)
 	account.RegisterRoutes(api, accountHandler, cfg)
 	user.RegisterRoutes(api, userHandler, cfg)
+	admin.RegisterRoutes(api, adminHandler, cfg)
 
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{
