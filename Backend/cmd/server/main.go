@@ -12,6 +12,7 @@ import (
 	"bank-service/internal/modules/account"
 	"bank-service/internal/modules/admin"
 	"bank-service/internal/modules/auth"
+	"bank-service/internal/modules/transaction"
 	"bank-service/internal/modules/user"
 
 	"github.com/gin-gonic/gin"
@@ -32,6 +33,7 @@ func main() {
 		&auth.RefreshToken{},
 		&account.Account{},
 		&user.UserProfile{},
+		&transaction.Transaction{},
 	); err != nil {
 		log.Fatalf("❌ MySQL Auto Migration thất bại: %v", err)
 	}
@@ -92,10 +94,15 @@ func main() {
 	adminService := admin.NewService(adminRepo)
 	adminHandler := admin.NewHandler(adminService)
 
+	transactionRepo := transaction.NewRepository(database.DB)
+	transactionService := transaction.NewService(transactionRepo)
+	transactionHandler := transaction.NewHandler(transactionService)
+
 	api := r.Group("/api/v1")
 	auth.RegisterRoutes(api, authHandler)
 	account.RegisterRoutes(api, accountHandler, cfg)
 	user.RegisterRoutes(api, userHandler, cfg)
+	transaction.RegisterRoutes(api, transactionHandler, cfg)
 	admin.RegisterRoutes(api, adminHandler, cfg)
 
 	r.GET("/ping", func(c *gin.Context) {

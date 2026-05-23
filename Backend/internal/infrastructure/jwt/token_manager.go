@@ -32,7 +32,7 @@ func GenerateAccessToken(
 
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(
-				time.Now().Add(5 * time.Minute),
+				time.Now().Add(24* 60 * time.Minute),
 			),
 
 			IssuedAt: jwt.NewNumericDate(time.Now()),
