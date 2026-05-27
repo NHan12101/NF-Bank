@@ -16,6 +16,8 @@ func RegisterRoutes(
 
 	transactionGroup.Use(middleware.AuthMiddleware(cfg))
 	{
+		transactionGroup.GET("", handler.GetMyTransactions)
 		transactionGroup.POST("/transfer", handler.Transfer)
+		transactionGroup.GET("/:reference_code", handler.GetTransactionDetail)
 	}
 }

@@ -110,3 +110,63 @@ func (r *Repository) FindPaymentAccountByUserIDForUpdate(
 
 	return &acc, nil
 }
+
+func (r *Repository) FindPaymentAccountByUserID(
+	userID uint,
+) (*account.Account, error) {
+
+	var acc account.Account
+
+	err := r.db.
+		Where("user_id = ? AND account_type = ?", userID, "PAYMENT").
+		First(&acc).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	return &acc, nil
+}
+
+func (r *Repository) FindTransactionsByAccountID(
+	accountID uint,
+) ([]Transaction, error) {
+
+	var transactions []Transaction
+
+	err := r.db.
+		Where(
+			"sender_account_id = ? OR receiver_account_id = ?",
+			accountID,
+			accountID,
+		).
+		Order("created_at desc").
+		Find(&transactions).Error
+
+	return transactions, err
+}
+
+func (r *Repository) FindTransactionByReferenceCode(
+	referenceCode string,
+) (*Transaction, error) {
+
+	var transaction Transaction
+
+	err := r.db.
+		Where("reference_code = ?", referenceCode).
+		First(&transaction).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	return &transaction, nil
+}

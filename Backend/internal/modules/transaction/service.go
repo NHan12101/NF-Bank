@@ -130,3 +130,84 @@ func (s *Service) Transfer(
 func generateReferenceCode() string {
 	return fmt.Sprintf("TRX%d", time.Now().UnixNano())
 }
+
+func (s *Service) GetMyTransactions(
+	userID uint,
+) ([]TransactionResponse, error) {
+
+	paymentAccount, err := s.repo.FindPaymentAccountByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if paymentAccount == nil {
+		return nil, errors.New("không tìm thấy tài khoản PAYMENT")
+	}
+
+	transactions, err := s.repo.FindTransactionsByAccountID(paymentAccount.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	response := make([]TransactionResponse, 0)
+
+	for _, transaction := range transactions {
+		response = append(response, TransactionResponse{
+			ID:                transaction.ID,
+			ReferenceCode:     transaction.ReferenceCode,
+			SenderAccountID:   transaction.SenderAccountID,
+			ReceiverAccountID: transaction.ReceiverAccountID,
+			Amount:            transaction.Amount,
+			Currency:          transaction.Currency,
+			Type:              transaction.Type,
+			Status:            transaction.Status,
+			Description:       transaction.Description,
+		})
+	}
+
+	return response, nil
+}
+
+func (s *Service) GetTransactionDetail(
+	userID uint,
+	referenceCode string,
+) (*TransactionResponse, error) {
+
+	paymentAccount, err := s.repo.FindPaymentAccountByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if paymentAccount == nil {
+		return nil, errors.New("không tìm thấy tài khoản PAYMENT")
+	}
+
+	transaction, err := s.repo.FindTransactionByReferenceCode(referenceCode)
+	if err != nil {
+		return nil, err
+	}
+
+	if transaction == nil {
+		return nil, errors.New("không tìm thấy giao dịch")
+	}
+
+	isOwner :=
+		transaction.SenderAccountID == paymentAccount.ID ||
+			transaction.ReceiverAccountID == paymentAccount.ID
+
+	if !isOwner {
+		return nil, errors.New("không có quyền truy cập giao dịch này")
+	}
+
+	return &TransactionResponse{
+		ID:                transaction.ID,
+		ReferenceCode:     transaction.ReferenceCode,
+		SenderAccountID:   transaction.SenderAccountID,
+		ReceiverAccountID: transaction.ReceiverAccountID,
+		Amount:            transaction.Amount,
+		Currency:          transaction.Currency,
+		Type:              transaction.Type,
+		Status:            transaction.Status,
+		Description:       transaction.Description,
+	}, nil
+}
