@@ -227,9 +227,16 @@ func validatePassword(password string) error {
 	return nil
 }
 
-// Logout xử lý đăng xuất (nếu cần)
-func (s *Service) Logout() error {
-	return nil
+// Logout xử lý đăng xuất
+func (s *Service) Logout(refreshToken string) error {
+
+	refreshTokenHash := sha256.Sum256(
+		[]byte(refreshToken),
+	)
+
+	return s.repo.RevokeRefreshToken(
+		hex.EncodeToString(refreshTokenHash[:]),
+	)
 }
 
 // RefreshAccessToken tạo access token mới từ refresh token

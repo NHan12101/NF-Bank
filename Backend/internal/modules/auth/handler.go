@@ -88,7 +88,17 @@ func setRefreshTokenCookie(c *gin.Context, refreshToken string) {
 
 // Logout xử lý API logout
 func (h *Handler) Logout(c *gin.Context) {
-	err := h.service.Logout()
+
+	refreshToken, err := c.Cookie("refresh_token")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Không tìm thấy refresh token",
+		})
+		return
+	}
+
+	err = h.service.Logout(refreshToken)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

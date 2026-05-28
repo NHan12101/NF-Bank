@@ -140,3 +140,13 @@ func (r *Repository) RevokeAllUserRefreshTokens(
 		Where("user_id = ? AND is_revoked = ?", userID, false).
 		Update("is_revoked", true).Error
 }
+
+func (r *Repository) RevokeRefreshToken(
+	tokenHash string,
+) error {
+
+	return r.db.
+		Model(&RefreshToken{}).
+		Where("token_hash = ?", tokenHash).
+		Update("is_revoked", true).Error
+}
