@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"bank-service/internal/modules/account"
 	"errors"
 	"fmt"
 	"time"
@@ -26,27 +27,20 @@ func (s *Service) Transfer(
 	var transactionResult *Transaction
 
 	err := s.repo.WithTx(func(tx *gorm.DB) error {
-		senderAccount, err := s.repo.FindPaymentAccountByUserIDForUpdate(
-			tx,
-			userID,
-		)
-
+		// 1. Tìm sender account (chưa lock) để lấy ID
+		senderAccount, err := s.repo.FindPaymentAccountByUserID(userID)
 		if err != nil {
 			return err
 		}
-
 		if senderAccount == nil {
 			return errors.New("không tìm thấy tài khoản gửi")
 		}
 
-		receiverAccount, err := s.repo.FindAccountByNumberForUpdate(
-			tx,
-			req.ReceiverAccountNumber,
-		)
+		// 2. Tìm receiver account (chưa lock) để lấy ID
+		receiverAccount, err := s.repo.FindAccountByNumber(req.ReceiverAccountNumber)
 		if err != nil {
 			return err
 		}
-
 		if receiverAccount == nil {
 			return errors.New("không tìm thấy tài khoản nhận")
 		}
@@ -55,28 +49,59 @@ func (s *Service) Transfer(
 			return errors.New("không thể chuyển tiền cho chính tài khoản của mình")
 		}
 
-		if senderAccount.Status != "ACTIVE" {
+		// 3. Thực hiện khóa theo thứ tự ID tăng dần để tránh Deadlock
+		var lockedSender, lockedReceiver *account.Account
+		if senderAccount.ID < receiverAccount.ID {
+			// Khóa sender trước, receiver sau
+			lockedSender, err = s.repo.FindAccountByIDForUpdate(tx, senderAccount.ID)
+			if err != nil {
+				return err
+			}
+			lockedReceiver, err = s.repo.FindAccountByIDForUpdate(tx, receiverAccount.ID)
+			if err != nil {
+				return err
+			}
+		} else {
+			// Khóa receiver trước, sender sau
+			lockedReceiver, err = s.repo.FindAccountByIDForUpdate(tx, receiverAccount.ID)
+			if err != nil {
+				return err
+			}
+			lockedSender, err = s.repo.FindAccountByIDForUpdate(tx, senderAccount.ID)
+			if err != nil {
+				return err
+			}
+		}
+
+		if lockedSender == nil {
+			return errors.New("không tìm thấy tài khoản gửi")
+		}
+		if lockedReceiver == nil {
+			return errors.New("không tìm thấy tài khoản nhận")
+		}
+
+		if lockedSender.Status != "ACTIVE" {
 			return errors.New("tài khoản gửi không hoạt động")
 		}
 
-		if receiverAccount.Status != "ACTIVE" {
+		if lockedReceiver.Status != "ACTIVE" {
 			return errors.New("tài khoản nhận không hoạt động")
 		}
 
-		if senderAccount.Currency != receiverAccount.Currency {
+		if lockedSender.Currency != lockedReceiver.Currency {
 			return errors.New("không thể chuyển tiền khác loại tiền tệ")
 		}
 
-		if senderAccount.Balance < req.Amount {
+		if lockedSender.Balance < req.Amount {
 			return errors.New("số dư không đủ")
 		}
 
-		senderNewBalance := senderAccount.Balance - req.Amount
-		receiverNewBalance := receiverAccount.Balance + req.Amount
+		senderNewBalance := lockedSender.Balance - req.Amount
+		receiverNewBalance := lockedReceiver.Balance + req.Amount
 
 		if err := s.repo.UpdateAccountBalance(
 			tx,
-			senderAccount.ID,
+			lockedSender.ID,
 			senderNewBalance,
 		); err != nil {
 			return err
@@ -84,7 +109,7 @@ func (s *Service) Transfer(
 
 		if err := s.repo.UpdateAccountBalance(
 			tx,
-			receiverAccount.ID,
+			lockedReceiver.ID,
 			receiverNewBalance,
 		); err != nil {
 			return err
@@ -92,10 +117,10 @@ func (s *Service) Transfer(
 
 		newTransaction := &Transaction{
 			ReferenceCode:     generateReferenceCode(),
-			SenderAccountID:   senderAccount.ID,
-			ReceiverAccountID: receiverAccount.ID,
+			SenderAccountID:   lockedSender.ID,
+			ReceiverAccountID: lockedReceiver.ID,
 			Amount:            req.Amount,
-			Currency:          senderAccount.Currency,
+			Currency:          lockedSender.Currency,
 			Type:              "TRANSFER",
 			Status:            "SUCCESS",
 			Description:       req.Description,

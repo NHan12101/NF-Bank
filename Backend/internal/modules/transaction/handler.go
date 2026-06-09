@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"bank-service/internal/shared/response"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -20,72 +21,45 @@ func (h *Handler) Transfer(c *gin.Context) {
 	var req TransferRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "Dữ liệu không hợp lệ",
-			"error":   err.Error(),
-		})
+		response.Error(c, http.StatusBadRequest, "Dữ liệu không hợp lệ", err)
 		return
 	}
 
 	userID := c.GetUint("user_id")
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"message": "Không xác định được người dùng",
-		})
+		response.Error(c, http.StatusUnauthorized, "Không xác định được người dùng", nil)
 		return
 	}
 
 	transaction, err := h.service.Transfer(userID, req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		response.Error(c, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Chuyển tiền thành công",
-		"data":    transaction,
-	})
+	response.Success(c, http.StatusOK, "Chuyển tiền thành công", transaction)
 }
 
 func (h *Handler) GetMyTransactions(c *gin.Context) {
 	userID := c.GetUint("user_id")
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"message": "Không xác định được người dùng",
-		})
+		response.Error(c, http.StatusUnauthorized, "Không xác định được người dùng", nil)
 		return
 	}
 
 	transactions, err := h.service.GetMyTransactions(userID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		response.Error(c, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Lấy lịch sử giao dịch thành công",
-		"data":    transactions,
-	})
+	response.Success(c, http.StatusOK, "Lấy lịch sử giao dịch thành công", transactions)
 }
 
 func (h *Handler) GetTransactionDetail(c *gin.Context) {
 	userID := c.GetUint("user_id")
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"message": "Không xác định được người dùng",
-		})
+		response.Error(c, http.StatusUnauthorized, "Không xác định được người dùng", nil)
 		return
 	}
 
@@ -96,16 +70,9 @@ func (h *Handler) GetTransactionDetail(c *gin.Context) {
 		referenceCode,
 	)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		response.Error(c, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Lấy chi tiết giao dịch thành công",
-		"data":    transaction,
-	})
+	response.Success(c, http.StatusOK, "Lấy chi tiết giao dịch thành công", transaction)
 }

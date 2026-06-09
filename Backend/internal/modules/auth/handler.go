@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bank-service/internal/shared/response"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -24,26 +25,16 @@ func (h *Handler) Register(c *gin.Context) {
 
 	// Bind JSON request vào struct
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "Dữ liệu không hợp lệ",
-			"error":   err.Error(),
-		})
+		response.Error(c, http.StatusBadRequest, "Dữ liệu không hợp lệ", err)
 		return
 	}
 
 	if err := h.service.Register(req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		response.Error(c, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"success": true,
-		"message": "OTP xác thực đăng ký đã được gửi đến email",
-	})
+	response.Success(c, http.StatusCreated, "OTP xác thực đăng ký đã được gửi đến email", nil)
 }
 
 // Login xử lý API đăng nhập
@@ -51,26 +42,16 @@ func (h *Handler) Login(c *gin.Context) {
 	var req LoginRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "Dữ liệu không hợp lệ",
-			"error":   err.Error(),
-		})
+		response.Error(c, http.StatusBadRequest, "Dữ liệu không hợp lệ", err)
 		return
 	}
 
 	if err := h.service.Login(req); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		response.Error(c, http.StatusUnauthorized, err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "OTP đăng nhập đã được gửi đến email",
-	})
+	response.Success(c, http.StatusOK, "OTP đăng nhập đã được gửi đến email", nil)
 }
 
 // setRefreshTokenCookie thiết lập refresh token trong cookie
@@ -79,7 +60,7 @@ func setRefreshTokenCookie(c *gin.Context, refreshToken string) {
 		"refresh_token",
 		refreshToken,
 		7*24*60*60, // 7 ngày
-		"/",
+		"/api/v1/auth",
 		"",
 		false, // local dev dùng false, production HTTPS đổi thành true
 		true,  // HttpOnly
@@ -91,19 +72,13 @@ func (h *Handler) Logout(c *gin.Context) {
 
 	refreshToken, err := c.Cookie("refresh_token")
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"message": "Không tìm thấy refresh token",
-		})
+		response.Error(c, http.StatusUnauthorized, "Không tìm thấy refresh token", nil)
 		return
 	}
 
 	err = h.service.Logout(refreshToken)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "Đăng xuất thất bại",
-		})
+		response.Error(c, http.StatusInternalServerError, "Đăng xuất thất bại", err)
 		return
 	}
 
@@ -112,43 +87,30 @@ func (h *Handler) Logout(c *gin.Context) {
 		"refresh_token",
 		"",
 		-1,
-		"/",
+		"/api/v1/auth",
 		"",
 		false,
 		true,
 	)
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Đăng xuất thành công",
-	})
+	response.Success(c, http.StatusOK, "Đăng xuất thành công", nil)
 }
 
 // Refresh xử lý cấp access token mới từ refresh token cookie
 func (h *Handler) Refresh(c *gin.Context) {
 	refreshToken, err := c.Cookie("refresh_token")
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"message": "Không tìm thấy refresh token",
-		})
+		response.Error(c, http.StatusUnauthorized, "Không tìm thấy refresh token", nil)
 		return
 	}
 
-	response, err := h.service.RefreshAccessToken(refreshToken)
+	res, err := h.service.RefreshAccessToken(refreshToken)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		response.Error(c, http.StatusUnauthorized, err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Refresh token thành công",
-		"data":    response,
-	})
+	response.Success(c, http.StatusOK, "Refresh token thành công", res)
 }
 
 // ChangePassword xử lý đổi mật khẩu
@@ -156,35 +118,22 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 	var req ChangePasswordRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "Dữ liệu không hợp lệ",
-			"error":   err.Error(),
-		})
+		response.Error(c, http.StatusBadRequest, "Dữ liệu không hợp lệ", err)
 		return
 	}
 
 	userID := c.GetUint("user_id")
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"message": "Không xác định được người dùng",
-		})
+		response.Error(c, http.StatusUnauthorized, "Không xác định được người dùng", nil)
 		return
 	}
 
 	if err := h.service.ChangePassword(userID, req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		response.Error(c, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Đổi mật khẩu thành công",
-	})
+	response.Success(c, http.StatusOK, "Đổi mật khẩu thành công", nil)
 }
 
 // ForgotPassword xử lý yêu cầu quên mật khẩu
@@ -192,26 +141,16 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 	var req ForgotPasswordRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "Dữ liệu không hợp lệ",
-			"error":   err.Error(),
-		})
+		response.Error(c, http.StatusBadRequest, "Dữ liệu không hợp lệ", err)
 		return
 	}
 
 	if err := h.service.ForgotPassword(req); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "Không thể gửi OTP",
-		})
+		response.Error(c, http.StatusInternalServerError, "Không thể gửi OTP", err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Nếu email tồn tại, OTP đã được gửi",
-	})
+	response.Success(c, http.StatusOK, "Nếu email tồn tại, OTP đã được gửi", nil)
 }
 
 // ResetPassword xử lý yêu cầu reset mật khẩu
@@ -219,26 +158,16 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 	var req ResetPasswordRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "Dữ liệu không hợp lệ",
-			"error":   err.Error(),
-		})
+		response.Error(c, http.StatusBadRequest, "Dữ liệu không hợp lệ", err)
 		return
 	}
 
 	if err := h.service.ResetPassword(req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		response.Error(c, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Đặt lại mật khẩu thành công",
-	})
+	response.Success(c, http.StatusOK, "Đặt lại mật khẩu thành công", nil)
 }
 
 // ConfirmRegister xác thực OTP đăng ký
@@ -246,26 +175,16 @@ func (h *Handler) ConfirmRegister(c *gin.Context) {
 	var req ConfirmRegisterRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "Dữ liệu không hợp lệ",
-			"error":   err.Error(),
-		})
+		response.Error(c, http.StatusBadRequest, "Dữ liệu không hợp lệ", err)
 		return
 	}
 
 	if err := h.service.ConfirmRegister(req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		response.Error(c, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Xác thực đăng ký thành công, vui lòng đăng nhập",
-	})
+	response.Success(c, http.StatusOK, "Xác thực đăng ký thành công, vui lòng đăng nhập", nil)
 }
 
 // ConfirmLogin xác thực OTP đăng nhập
@@ -273,28 +192,18 @@ func (h *Handler) ConfirmLogin(c *gin.Context) {
 	var req ConfirmLoginRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "Dữ liệu không hợp lệ",
-			"error":   err.Error(),
-		})
+		response.Error(c, http.StatusBadRequest, "Dữ liệu không hợp lệ", err)
 		return
 	}
 
-	response, err := h.service.ConfirmLogin(req)
+	res, err := h.service.ConfirmLogin(req)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		response.Error(c, http.StatusUnauthorized, err.Error(), nil)
 		return
 	}
 
-	setRefreshTokenCookie(c, response.RefreshToken)
+	setRefreshTokenCookie(c, res.RefreshToken)
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Đăng nhập thành công",
-		"data":    response,
-	})
+	response.Success(c, http.StatusOK, "Đăng nhập thành công", res)
 }
+

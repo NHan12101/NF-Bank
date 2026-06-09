@@ -170,3 +170,24 @@ func (r *Repository) FindTransactionByReferenceCode(
 
 	return &transaction, nil
 }
+
+func (r *Repository) FindAccountByNumber(
+	accountNumber string,
+) (*account.Account, error) {
+
+	var acc account.Account
+
+	err := r.db.
+		Where("account_number = ?", accountNumber).
+		First(&acc).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	return &acc, nil
+}
