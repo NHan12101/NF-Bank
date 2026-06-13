@@ -4,6 +4,7 @@ type TransferRequest struct {
 	ReceiverAccountNumber string `json:"receiver_account_number" binding:"required"`
 	Amount                int64  `json:"amount" binding:"required,gt=0"`
 	Description           string `json:"description"`
+	IDToken               string `json:"id_token"`
 }
 
 type TransactionResponse struct {

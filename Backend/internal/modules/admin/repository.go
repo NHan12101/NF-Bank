@@ -54,3 +54,19 @@ func (r *Repository) UnlockUser(userID uint) error {
 		Where("id = ?", userID).
 		Update("is_locked", false).Error
 }
+
+func (r *Repository) CreateAdminUser(user *auth.User) error {
+	return r.db.Create(user).Error
+}
+
+func (r *Repository) FindUserByEmailOrPhone(email string, phone string) (*auth.User, error) {
+	var user auth.User
+	err := r.db.Where("email = ? OR phone = ?", email, phone).First(&user).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}

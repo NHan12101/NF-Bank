@@ -1,21 +1,25 @@
 package transaction
 
 import (
+	"bank-service/internal/infrastructure/firebase"
 	"bank-service/internal/modules/account"
 	"errors"
 	"fmt"
+	"regexp"
 	"time"
 
 	"gorm.io/gorm"
 )
 
 type Service struct {
-	repo *Repository
+	repo           *Repository
+	firebaseClient *firebase.Client
 }
 
-func NewService(repo *Repository) *Service {
+func NewService(repo *Repository, firebaseClient *firebase.Client) *Service {
 	return &Service{
-		repo: repo,
+		repo:           repo,
+		firebaseClient: firebaseClient,
 	}
 }
 
@@ -24,9 +28,27 @@ func (s *Service) Transfer(
 	req TransferRequest,
 ) (*TransactionResponse, error) {
 
+	if req.IDToken == "" {
+		return nil, errors.New("giao dịch chuyển tiền yêu cầu xác thực OTP")
+	}
+
+	verifiedPhone, err := s.firebaseClient.VerifyIDToken(req.IDToken)
+	if err != nil {
+		return nil, err
+	}
+
+	userPhone, err := s.repo.GetUserPhone(userID)
+	if err != nil {
+		return nil, errors.New("không thể xác thực thông tin số điện thoại của người dùng")
+	}
+
+	if normalizePhone(verifiedPhone) != normalizePhone(userPhone) {
+		return nil, errors.New("số điện thoại xác thực OTP không trùng khớp với số điện thoại đăng ký tài khoản")
+	}
+
 	var transactionResult *Transaction
 
-	err := s.repo.WithTx(func(tx *gorm.DB) error {
+	err = s.repo.WithTx(func(tx *gorm.DB) error {
 		// 1. Tìm sender account (chưa lock) để lấy ID
 		senderAccount, err := s.repo.FindPaymentAccountByUserID(userID)
 		if err != nil {
@@ -235,4 +257,17 @@ func (s *Service) GetTransactionDetail(
 		Status:            transaction.Status,
 		Description:       transaction.Description,
 	}, nil
+}
+
+func normalizePhone(phone string) string {
+	reg := regexp.MustCompile(`\D`)
+	digits := reg.ReplaceAllString(phone, "")
+
+	if len(digits) >= 11 && digits[:2] == "84" {
+		return digits[2:]
+	}
+	if len(digits) > 0 && digits[:1] == "0" {
+		return digits[1:]
+	}
+	return digits
 }

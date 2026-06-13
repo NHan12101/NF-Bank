@@ -31,6 +31,8 @@ type Config struct {
 	AccessTokenSecret  string
 	RefreshTokenSecret string
 	CSRFSecret         string
+	AppURL             string
+	FirebaseCredentials string
 }
 
 // LoadConfig đọc file .env và nạp vào Config
@@ -58,9 +60,11 @@ func LoadConfig() *Config {
 		SMTPPassword: getRequiredEnv("SMTP_PASSWORD"),
 		SMTPFrom:     getRequiredEnv("SMTP_FROM"),
 
-		AccessTokenSecret:  getRequiredEnv("ACCESS_TOKEN_SECRET"),
-		RefreshTokenSecret: getRequiredEnv("REFRESH_TOKEN_SECRET"),
-		CSRFSecret:         getRequiredEnv("CSRF_SECRET"),
+		AccessTokenSecret:   getRequiredEnv("ACCESS_TOKEN_SECRET"),
+		RefreshTokenSecret:  getRequiredEnv("REFRESH_TOKEN_SECRET"),
+		CSRFSecret:          getRequiredEnv("CSRF_SECRET"),
+		AppURL:              getEnv("APP_URL", "http://localhost:8080"),
+		FirebaseCredentials: getEnv("FIREBASE_CREDENTIALS", "./config/firebase-adminsdk.json"),
 	}
 
 	return cfg

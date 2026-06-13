@@ -27,28 +27,27 @@ func (s *Service) CreateAccount(
 	validTypes := map[string]bool{
 		"PAYMENT": true,
 		"SAVINGS": true,
+		"CREDIT":  true,
 	}
 
 	if !validTypes[req.AccountType] {
 		return nil, errors.New("loại tài khoản không hợp lệ")
 	}
 
-	// Mỗi user chỉ có 1 PAYMENT account
-	if req.AccountType == "PAYMENT" {
+	// Mỗi user chỉ được sở hữu tối đa 1 tài khoản cho mỗi loại
+	existingAccount, err := s.repo.FindByUserIDAndType(
+		userID,
+		req.AccountType,
+	)
+	if err != nil {
+		return nil, err
+	}
 
-		existingPaymentAccount, err := s.repo.FindByUserIDAndType(
-			userID,
-			"PAYMENT",
+	if existingAccount != nil {
+		return nil, fmt.Errorf(
+			"người dùng đã sở hữu tài khoản %s",
+			req.AccountType,
 		)
-		if err != nil {
-			return nil, err
-		}
-
-		if existingPaymentAccount != nil {
-			return nil, errors.New(
-				"người dùng đã có tài khoản PAYMENT",
-			)
-		}
 	}
 
 	// Validate currency

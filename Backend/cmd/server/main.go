@@ -9,13 +9,18 @@ import (
 	"bank-service/internal/config"
 	"bank-service/internal/database"
 	"bank-service/internal/infrastructure/email"
+	"bank-service/internal/infrastructure/firebase"
 	"bank-service/internal/modules/account"
 	"bank-service/internal/modules/admin"
 	"bank-service/internal/modules/auth"
+	"bank-service/internal/modules/credit"
+	"bank-service/internal/modules/notification"
+	"bank-service/internal/modules/savings"
 	"bank-service/internal/modules/transaction"
 	"bank-service/internal/modules/user"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func main() {
@@ -31,13 +36,50 @@ func main() {
 	if err := database.DB.AutoMigrate(
 		&auth.User{},
 		&auth.RefreshToken{},
+		&auth.UserDevice{},
+		&auth.PendingLogin{},
+		&notification.Notification{},
 		&account.Account{},
+		&savings.SavingsDetail{},
+		&credit.CreditDetail{},
 		&user.UserProfile{},
 		&transaction.Transaction{},
 	); err != nil {
 		log.Fatalf("❌ MySQL Auto Migration thất bại: %v", err)
 	}
 	log.Println("✅ MySQL Auto Migration hoàn tất!")
+
+	// Seed Super Admin
+	var count int64
+	if err := database.DB.Model(&auth.User{}).Where("role = ?", "super_admin").Count(&count).Error; err != nil {
+		log.Printf("⚠️ Lỗi kiểm tra tài khoản Super Admin: %v", err)
+	} else if count == 0 {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte("SuperAdmin123!"), bcrypt.DefaultCost)
+		if err != nil {
+			log.Fatalf("❌ Lỗi mã hóa mật khẩu Super Admin: %v", err)
+		}
+		superAdmin := auth.User{
+			FullName:     "Super Admin",
+			Email:        "superadmin@nfbank.com",
+			PasswordHash: string(hashedPassword),
+			Phone:        "0999999999",
+			Role:         "super_admin",
+			IsVerified:   true,
+			IsLocked:     false,
+			TOTPSecret:   "KGF2MOLIONATKJ5IWJW4FJYUVFS7KHPT",
+		}
+		if err := database.DB.Create(&superAdmin).Error; err != nil {
+			log.Printf("⚠️ Lỗi tạo tài khoản Super Admin mặc định: %v", err)
+		} else {
+			log.Println("✅ Đã tạo tài khoản Super Admin mặc định (superadmin@nfbank.com / SuperAdmin123!)")
+		}
+	}
+
+	// Khởi tạo Firebase Admin Client
+	firebaseClient, err := firebase.InitFirebase(cfg.FirebaseCredentials)
+	if err != nil {
+		log.Fatalf("❌ Khởi tạo Firebase Admin SDK thất bại: %v", err)
+	}
 
 	if cfg.ServerMode == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -84,6 +126,7 @@ func main() {
 		accountService,
 		userService,
 		cfg,
+		firebaseClient,
 	)
 	authHandler := auth.NewHandler(authService)
 
@@ -91,11 +134,11 @@ func main() {
 	userHandler := user.NewHandler(userService)
 
 	adminRepo := admin.NewRepository(database.DB)
-	adminService := admin.NewService(adminRepo)
+	adminService := admin.NewService(adminRepo, accountService)
 	adminHandler := admin.NewHandler(adminService)
 
 	transactionRepo := transaction.NewRepository(database.DB)
-	transactionService := transaction.NewService(transactionRepo)
+	transactionService := transaction.NewService(transactionRepo, firebaseClient)
 	transactionHandler := transaction.NewHandler(transactionService)
 
 	api := r.Group("/api/v1")
