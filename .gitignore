@@ -1,8 +1,15 @@
 # --- Biến môi trường & Config nhạy cảm ---
 .env
+.env.local
 *.env
 .env.*
 !.env.example
+next.config.mjs
+firebase-adminsdk.json
+*adminsdk.json
+credentials.json
+*credentials.json
+
 
 # --- Thư mục build & logs của Golang ---
 /backend/bin/

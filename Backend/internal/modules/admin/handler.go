@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"bank-service/internal/modules/account"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -111,5 +113,106 @@ func (h *Handler) UnlockUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Mở khóa tài khoản người dùng thành công",
+	})
+}
+
+func (h *Handler) CreateUserAccount(c *gin.Context) {
+	var req account.CreateAccountRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Dữ liệu không hợp lệ",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	userIDParam := c.Param("id")
+	userID64, err := strconv.ParseUint(userIDParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "ID người dùng không hợp lệ",
+		})
+		return
+	}
+
+	accResponse, err := h.service.CreateUserAccount(uint(userID64), req.AccountType, req.Currency)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"message": "Mở tài khoản thành công",
+		"data":    accResponse,
+	})
+}
+
+func (h *Handler) GetUserAccounts(c *gin.Context) {
+	userIDParam := c.Param("id")
+	userID64, err := strconv.ParseUint(userIDParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "ID người dùng không hợp lệ",
+		})
+		return
+	}
+
+	accounts, err := h.service.GetUserAccounts(uint(userID64))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Lấy danh sách tài khoản thành công",
+		"data":    accounts,
+	})
+}
+
+func (h *Handler) CreateAdmin(c *gin.Context) {
+	role := c.GetString("role")
+	if role != "super_admin" {
+		c.JSON(http.StatusForbidden, gin.H{
+			"success": false,
+			"message": "Chỉ có Super Admin mới có quyền thực hiện chức năng này",
+		})
+		return
+	}
+
+	var req CreateAdminRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Dữ liệu không hợp lệ",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	res, err := h.service.CreateAdmin(req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"message": "Tạo tài khoản Admin con thành công",
+		"data":    res,
 	})
 }

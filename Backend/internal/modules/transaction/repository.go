@@ -191,3 +191,11 @@ func (r *Repository) FindAccountByNumber(
 
 	return &acc, nil
 }
+
+func (r *Repository) GetUserPhone(userID uint) (string, error) {
+	var user struct {
+		Phone string
+	}
+	err := r.db.Table("users").Where("id = ?", userID).First(&user).Error
+	return user.Phone, err
+}

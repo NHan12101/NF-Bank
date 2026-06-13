@@ -24,6 +24,9 @@ func RegisterRoutes(
 		adminGroup.GET("/users/:id", handler.GetUserByID)
 		adminGroup.PATCH("/users/:id/lock", handler.LockUser)
 		adminGroup.PATCH("/users/:id/unlock", handler.UnlockUser)
+		adminGroup.POST("/users/:id/accounts", handler.CreateUserAccount)
+		adminGroup.GET("/users/:id/accounts", handler.GetUserAccounts)
+		adminGroup.POST("/create-admin", handler.CreateAdmin)
 	}
 }
 
@@ -31,10 +34,10 @@ func AdminOnlyMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role := c.GetString("role")
 
-		if role != "admin" {
+		if role != "admin" && role != "super_admin" {
 			c.JSON(http.StatusForbidden, gin.H{
 				"success": false,
-				"message": "Bạn không có quyền truy cập chức năng admin",
+				"message": "Bạn không có quyền truy cập chức năng quản trị viên",
 			})
 			c.Abort()
 			return

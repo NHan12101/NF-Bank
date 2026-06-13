@@ -1,17 +1,23 @@
 package admin
 
 import (
+	"bank-service/internal/infrastructure/totp"
+	"bank-service/internal/modules/account"
 	"bank-service/internal/modules/auth"
 	"errors"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Service struct {
-	repo *Repository
+	repo           *Repository
+	accountService *account.Service
 }
 
-func NewService(repo *Repository) *Service {
+func NewService(repo *Repository, accountService *account.Service) *Service {
 	return &Service{
-		repo: repo,
+		repo:           repo,
+		accountService: accountService,
 	}
 }
 
@@ -93,4 +99,64 @@ func mapUserToAdminResponse(user auth.User) AdminUserResponse {
 		CreatedAt:      user.CreatedAt,
 		UpdatedAt:      user.UpdatedAt,
 	}
+}
+
+func (s *Service) CreateUserAccount(
+	userID uint,
+	accountType string,
+	currency string,
+) (*account.AccountResponse, error) {
+	req := account.CreateAccountRequest{
+		AccountType: accountType,
+		Currency:    currency,
+	}
+	return s.accountService.CreateAccount(userID, req)
+}
+
+func (s *Service) GetUserAccounts(
+	userID uint,
+) ([]account.AccountResponse, error) {
+	return s.accountService.GetUserAccounts(userID)
+}
+
+func (s *Service) CreateAdmin(req CreateAdminRequest) (*CreateAdminResponse, error) {
+	existingUser, err := s.repo.FindUserByEmailOrPhone(req.Email, req.Phone)
+	if err != nil {
+		return nil, err
+	}
+	if existingUser != nil {
+		return nil, errors.New("email hoặc số điện thoại đã được sử dụng")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
+	totpSecret := totp.GenerateSecret()
+
+	adminUser := &auth.User{
+		FullName:     req.FullName,
+		Email:        req.Email,
+		Phone:        req.Phone,
+		PasswordHash: string(hashedPassword),
+		Role:         "admin",
+		IsVerified:   true,
+		IsLocked:     false,
+		TOTPSecret:   totpSecret,
+	}
+
+	if err := s.repo.CreateAdminUser(adminUser); err != nil {
+		return nil, err
+	}
+
+	return &CreateAdminResponse{
+		ID:         adminUser.ID,
+		FullName:   adminUser.FullName,
+		Email:      adminUser.Email,
+		Phone:      adminUser.Phone,
+		Role:       adminUser.Role,
+		TOTPSecret: adminUser.TOTPSecret,
+		CreatedAt:  adminUser.CreatedAt,
+	}, nil
 }
