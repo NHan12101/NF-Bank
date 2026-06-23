@@ -23,6 +23,16 @@ export default function AdminDashboardPage() {
   const [modalSuccess, setModalSuccess] = useState('');
   const [creationCurrency, setCreationCurrency] = useState('VND');
 
+  // Deposit and history states
+  const [showDepositForm, setShowDepositForm] = useState(null); // stores account_number
+  const [depositAmount, setDepositAmount] = useState('');
+  const [depositDescription, setDepositDescription] = useState('');
+  const [depositLoading, setDepositLoading] = useState(false);
+  
+  const [showHistoryFor, setShowHistoryFor] = useState(null); // stores account_number
+  const [accountTransactions, setAccountTransactions] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
   // Child admin creation states
   const [newAdminName, setNewAdminName] = useState('');
   const [newAdminEmail, setNewAdminEmail] = useState('');
@@ -92,6 +102,71 @@ export default function AdminDashboardPage() {
       setModalError('Đã xảy ra lỗi kết nối.');
     } finally {
       setModalLoading(false);
+    }
+  };
+
+  const handleDeposit = async (accountNumber) => {
+    const amountVal = parseInt(depositAmount);
+    if (!depositAmount || isNaN(amountVal) || amountVal <= 0) {
+      setModalError('Số tiền nạp phải là số dương lớn hơn 0.');
+      return;
+    }
+    setDepositLoading(true);
+    setModalError('');
+    setModalSuccess('');
+    try {
+      const res = await apiFetch('/admin/deposit', {
+        method: 'POST',
+        body: JSON.stringify({
+          receiver_account_number: accountNumber,
+          amount: amountVal,
+          description: depositDescription.trim()
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setModalSuccess(`Đã nạp thành công ${new Intl.NumberFormat('vi-VN').format(amountVal)} VND vào tài khoản ${accountNumber}.`);
+        setDepositAmount('');
+        setDepositDescription('');
+        setShowDepositForm(null);
+        fetchUserAccounts(selectedUser.id); // Refresh accounts list
+      } else {
+        setModalError(data.message || 'Nạp tiền thất bại.');
+      }
+    } catch (err) {
+      setModalError('Lỗi kết nối khi nạp tiền.');
+    } finally {
+      setDepositLoading(false);
+    }
+  };
+
+  const handleToggleHistory = async (accountId, accountNumber) => {
+    if (showHistoryFor === accountNumber) {
+      setShowHistoryFor(null);
+      setAccountTransactions([]);
+      return;
+    }
+
+    setHistoryLoading(true);
+    setShowHistoryFor(accountNumber);
+    setAccountTransactions([]);
+    setModalError('');
+    setModalSuccess('');
+
+    try {
+      const res = await apiFetch(`/admin/accounts/${accountId}/transactions`);
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAccountTransactions(data.data || []);
+      } else {
+        setModalError(data.message || 'Không thể tải lịch sử giao dịch.');
+        setShowHistoryFor(null);
+      }
+    } catch (err) {
+      setModalError('Lỗi kết nối khi tải lịch sử.');
+      setShowHistoryFor(null);
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -583,30 +658,188 @@ export default function AdminDashboardPage() {
                         borderRadius: '10px',
                         padding: '12px 16px',
                         display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
+                        flexDirection: 'column',
+                        gap: '12px'
                       }} id={`modal-account-item-${acc.account_number}`}>
-                        <div>
-                          <div style={{ fontWeight: '600', color: '#fff' }}>
-                            {acc.account_type === 'PAYMENT' && '💳 TÀI KHOẢN NGUỒN (PAYMENT)'}
-                            {acc.account_type === 'SAVINGS' && '💰 TÀI KHOẢN TIẾT KIỆM (SAVINGS)'}
-                            {acc.account_type === 'CREDIT' && '📈 TÀI KHOẢN TÍN DỤNG (CREDIT)'}
+                        {/* Main Account Info */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <div style={{ fontWeight: '600', color: '#fff' }}>
+                              {acc.account_type === 'PAYMENT' && '💳 TÀI KHOẢN NGUỒN (PAYMENT)'}
+                              {acc.account_type === 'SAVINGS' && '💰 TÀI KHOẢN TIẾT KIỆM (SAVINGS)'}
+                              {acc.account_type === 'CREDIT' && '📈 TÀI KHOẢN TÍN DỤNG (CREDIT)'}
+                            </div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                              Số TK: <strong>{acc.account_number}</strong>
+                            </div>
                           </div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                            Số TK: <strong>{acc.account_number}</strong>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontWeight: 'bold', color: 'var(--secondary)' }}>
+                              {acc.currency === 'VND' ? 
+                                new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(acc.balance) :
+                                new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(acc.balance)
+                              }
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: acc.status === 'ACTIVE' ? 'var(--success)' : 'var(--error)', marginTop: '2px' }}>
+                              Trạng thái: {acc.status}
+                            </div>
                           </div>
                         </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontWeight: 'bold', color: 'var(--secondary)' }}>
-                            {acc.currency === 'VND' ? 
-                              new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(acc.balance) :
-                              new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(acc.balance)
-                            }
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: acc.status === 'ACTIVE' ? 'var(--success)' : 'var(--error)', marginTop: '2px' }}>
-                            Trạng thái: {acc.status}
-                          </div>
+
+                        {/* Action Buttons Row */}
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '8px' }}>
+                          <button
+                            onClick={() => {
+                              if (showDepositForm === acc.account_number) {
+                                setShowDepositForm(null);
+                              } else {
+                                setShowDepositForm(acc.account_number);
+                                setShowHistoryFor(null); // Close history if open
+                              }
+                            }}
+                            className="btn"
+                            style={{
+                              width: 'auto',
+                              padding: '4px 10px',
+                              fontSize: '0.75rem',
+                              borderRadius: '6px',
+                              background: 'rgba(16, 185, 129, 0.15)',
+                              color: 'var(--success)',
+                              border: '1px solid rgba(16, 185, 129, 0.3)',
+                              fontWeight: '600',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            💵 Nạp tiền
+                          </button>
+                          <button
+                            onClick={() => handleToggleHistory(acc.id, acc.account_number)}
+                            className="btn"
+                            style={{
+                              width: 'auto',
+                              padding: '4px 10px',
+                              fontSize: '0.75rem',
+                              borderRadius: '6px',
+                              background: 'rgba(6, 182, 212, 0.15)',
+                              color: 'var(--secondary)',
+                              border: '1px solid rgba(6, 182, 212, 0.3)',
+                              fontWeight: '600',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            📜 Lịch sử
+                          </button>
                         </div>
+
+                        {/* Deposit Inline Form */}
+                        {showDepositForm === acc.account_number && (
+                          <div style={{
+                            background: 'rgba(255,255,255,0.02)',
+                            borderRadius: '8px',
+                            padding: '12px',
+                            border: '1px dashed var(--success)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px',
+                            marginTop: '4px'
+                          }}>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--success)' }}>
+                              Nạp tiền vào tài khoản {acc.account_number}:
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <input
+                                type="number"
+                                placeholder="Số tiền (VND)"
+                                value={depositAmount}
+                                onChange={(e) => setDepositAmount(e.target.value)}
+                                style={{ flex: 1, padding: '6px 10px', fontSize: '0.85rem' }}
+                                disabled={depositLoading}
+                              />
+                              <input
+                                type="text"
+                                placeholder="Nội dung nạp (tùy chọn)"
+                                value={depositDescription}
+                                onChange={(e) => setDepositDescription(e.target.value)}
+                                style={{ flex: 2, padding: '6px 10px', fontSize: '0.85rem' }}
+                                disabled={depositLoading}
+                              />
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                              <button
+                                onClick={() => setShowDepositForm(null)}
+                                className="btn btn-secondary"
+                                style={{ width: 'auto', padding: '4px 12px', fontSize: '0.8rem', borderRadius: '6px' }}
+                                disabled={depositLoading}
+                              >
+                                Hủy
+                              </button>
+                              <button
+                                onClick={() => handleDeposit(acc.account_number)}
+                                className="btn btn-primary"
+                                style={{ width: 'auto', padding: '4px 12px', fontSize: '0.8rem', borderRadius: '6px', background: 'var(--success)' }}
+                                disabled={depositLoading}
+                              >
+                                {depositLoading ? 'Đang nạp...' : 'Xác nhận'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Transactions History List */}
+                        {showHistoryFor === acc.account_number && (
+                          <div style={{
+                            background: 'rgba(0,0,0,0.4)',
+                            borderRadius: '8px',
+                            padding: '12px',
+                            border: '1px solid rgba(6, 182, 212, 0.2)',
+                            marginTop: '4px',
+                            maxHeight: '200px',
+                            overflowY: 'auto'
+                          }}>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--secondary)', marginBottom: '8px' }}>
+                              Lịch sử giao dịch ví {acc.account_number}:
+                            </div>
+                            {historyLoading ? (
+                              <div style={{ textAlign: 'center', padding: '10px' }}>
+                                <div className="spinner pulse-animation" style={{ width: '20px', height: '20px', margin: '0 auto' }} />
+                              </div>
+                            ) : accountTransactions.length === 0 ? (
+                              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '8px' }}>
+                                Chưa có giao dịch nào phát sinh.
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {accountTransactions.map(tx => {
+                                  const isReceived = tx.receiver_account_id === acc.id;
+                                  const amtSign = isReceived ? '+' : '-';
+                                  const amtColor = isReceived ? 'var(--success)' : 'var(--error)';
+                                  return (
+                                    <div key={tx.id} style={{
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      fontSize: '0.8rem',
+                                      borderBottom: '1px solid rgba(255,255,255,0.03)',
+                                      paddingBottom: '6px'
+                                    }}>
+                                      <div style={{ flex: 1, paddingRight: '10px' }}>
+                                        <div style={{ fontWeight: '500', color: '#fff' }}>{tx.type} | <span style={{ color: 'var(--text-muted)' }}>{tx.reference_code}</span></div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                          {tx.description || 'Không có mô tả'}
+                                        </div>
+                                      </div>
+                                      <div style={{ textAlign: 'right', fontWeight: 'bold', color: amtColor }}>
+                                        {amtSign}{acc.currency === 'VND' ? 
+                                          new Intl.NumberFormat('vi-VN', { style: 'decimal' }).format(tx.amount) :
+                                          new Intl.NumberFormat('en-US', { style: 'decimal' }).format(tx.amount)
+                                        } {acc.currency}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

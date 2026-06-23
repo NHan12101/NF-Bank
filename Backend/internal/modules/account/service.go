@@ -60,7 +60,7 @@ func (s *Service) CreateAccount(
 		return nil, errors.New("loại tiền tệ không hợp lệ")
 	}
 
-	accountNumber, err := s.generateUniqueAccountNumber()
+	accountNumber, err := s.generateUniqueAccountNumber(userID)
 	if err != nil {
 		return nil, err
 	}
@@ -115,10 +115,22 @@ func (s *Service) GetUserAccounts(
 }
 
 // generateUniqueAccountNumber tạo số tài khoản unique
-func (s *Service) generateUniqueAccountNumber() (string, error) {
+func (s *Service) generateUniqueAccountNumber(userID uint) (string, error) {
+	// Truy vấn role của user
+	role, err := s.repo.FindUserRoleByID(userID)
+	if err != nil {
+		return "", err
+	}
+
+	prefix := "9704" // Mặc định cho user
+	if role == "super_admin" {
+		prefix = "9999"
+	} else if role == "admin" {
+		prefix = "8888"
+	}
 
 	for {
-		accountNumber, err := generateAccountNumber()
+		accountNumber, err := generateAccountNumber(prefix)
 		if err != nil {
 			return "", err
 		}
@@ -134,12 +146,17 @@ func (s *Service) generateUniqueAccountNumber() (string, error) {
 	}
 }
 
-// generateAccountNumber tạo random account number
-func generateAccountNumber() (string, error) {
+// generateAccountNumber tạo random account number với prefix
+func generateAccountNumber(prefix string) (string, error) {
+	number := prefix
 
-	number := "9704"
+	// Đảm bảo tổng chiều dài là 12 ký tự (giống như cũ: 4 ký tự prefix + 8 ký tự random)
+	lengthNeeded := 12 - len(prefix)
+	if lengthNeeded < 0 {
+		lengthNeeded = 8
+	}
 
-	for i := 0; i < 8; i++ {
+	for i := 0; i < lengthNeeded; i++ {
 		n, err := rand.Int(rand.Reader, big.NewInt(10))
 		if err != nil {
 			return "", err
@@ -156,7 +173,7 @@ func (s *Service) CreateDefaultPaymentAccount(
 	userID uint,
 ) error {
 
-	accountNumber, err := s.generateUniqueAccountNumber()
+	accountNumber, err := s.generateUniqueAccountNumber(userID)
 	if err != nil {
 		return err
 	}
@@ -165,7 +182,7 @@ func (s *Service) CreateDefaultPaymentAccount(
 		UserID:        userID,
 		AccountNumber: accountNumber,
 		AccountType:   "PAYMENT",
-		Balance:       0,
+		Balance:       1000000000, // Đặt sẵn 1 tỷ VND để test dễ dàng hơn
 		Currency:      "VND",
 		Status:        "ACTIVE",
 	}

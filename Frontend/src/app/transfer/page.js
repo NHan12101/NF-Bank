@@ -34,14 +34,14 @@ export default function TransferPage() {
         const data = await res.json();
         if (res.ok && data.success) {
           setAccounts(data.data || []);
-          
+
           // Set default description
           const userObj = localStorage.getItem('user');
           if (userObj) {
             try {
               const u = JSON.parse(userObj);
               setDescription(`${u.fullName || 'User'} chuyen tien`);
-            } catch (e) {}
+            } catch (e) { }
           }
         } else {
           setError(data.message || 'Không thể tải thông tin tài khoản nguồn.');
@@ -56,7 +56,7 @@ export default function TransferPage() {
   const handleTransferSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
+
     const amountVal = parseInt(amount, 10);
     if (isNaN(amountVal) || amountVal <= 0) {
       setError('Số tiền chuyển khoản phải lớn hơn 0.');
@@ -76,7 +76,7 @@ export default function TransferPage() {
       try {
         const u = JSON.parse(userObj);
         phone = u.phone;
-      } catch (err) {}
+      } catch (err) { }
     }
 
     if (!phone) {
@@ -125,7 +125,7 @@ export default function TransferPage() {
       if (window.transferRecaptchaVerifier) {
         try {
           window.transferRecaptchaVerifier.clear();
-        } catch (e) {}
+        } catch (e) { }
         window.transferRecaptchaVerifier = null;
       }
     };
@@ -138,18 +138,18 @@ export default function TransferPage() {
       if (window.transferRecaptchaVerifier) {
         try {
           window.transferRecaptchaVerifier.clear();
-        } catch (e) {}
+        } catch (e) { }
         window.transferRecaptchaVerifier = null;
       }
-      
+
       const container = document.getElementById('transfer-recaptcha-container');
       if (container) {
         container.innerHTML = '';
       }
-      
+
       window.transferRecaptchaVerifier = new RecaptchaVerifier(auth, 'transfer-recaptcha-container', {
         size: 'invisible',
-        callback: () => {}
+        callback: () => { }
       });
 
       const appVerifier = window.transferRecaptchaVerifier;
@@ -357,7 +357,7 @@ export default function TransferPage() {
                   Trạng thái: {successData.status}
                 </div>
               </div>
-              
+
               <button
                 id="transfer-back-btn"
                 onClick={() => router.push('/dashboard')}

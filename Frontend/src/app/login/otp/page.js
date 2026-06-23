@@ -205,23 +205,26 @@ export default function OTPPage() {
       return;
     }
 
-    if (!confirmationResult) {
-      setError('Chưa gửi được mã OTP. Vui lòng đợi hoặc thử gửi lại.');
-      return;
-    }
-
     setError('');
     setLoading(true);
 
     try {
-      // 1. Xác thực OTP trên Firebase và lấy ID Token
-      const credential = await confirmationResult.confirm(otpCode);
-      const idToken = await credential.user.getIdToken();
+      let bodyData = { email };
 
-      // 2. Gửi ID Token lên Backend để hoàn tất đăng nhập
+      if (confirmationResult) {
+        // 1. Xác thực OTP trên Firebase và lấy ID Token
+        const credential = await confirmationResult.confirm(otpCode);
+        const idToken = await credential.user.getIdToken();
+        bodyData.id_token = idToken;
+      } else {
+        // Fallback: gửi trực tiếp mã OTP lên Backend (email OTP hoặc bypass SMS)
+        bodyData.otp = otpCode;
+      }
+
+      // 2. Gửi ID Token hoặc OTP lên Backend để hoàn tất đăng nhập
       const res = await apiFetch('/auth/confirm-login', {
         method: 'POST',
-        body: JSON.stringify({ email, id_token: idToken }),
+        body: JSON.stringify(bodyData),
       });
 
       const resData = await res.json();
@@ -244,7 +247,7 @@ export default function OTPPage() {
         setError(resData.message || 'Mã xác thực không chính xác hoặc đã hết hạn.');
       }
     } catch (err) {
-      console.error("Xác minh Firebase OTP thất bại:", err);
+      console.error("Xác minh OTP thất bại:", err);
       setError('Mã OTP không đúng hoặc đã hết hạn. Vui lòng thử lại.');
     } finally {
       setLoading(false);
@@ -307,7 +310,7 @@ export default function OTPPage() {
                 id="otp-submit-btn"
                 type="submit"
                 className="btn btn-primary"
-                disabled={loading || !confirmationResult}
+                disabled={loading}
               >
                 {loading ? 'Đang xác thực...' : 'Xác thực'}
               </button>

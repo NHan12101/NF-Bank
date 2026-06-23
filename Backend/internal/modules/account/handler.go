@@ -65,6 +65,15 @@ func (h *Handler) CreateAccount(c *gin.Context) {
 		return
 	}
 
+	role := c.GetString("role")
+	if (req.AccountType == "SAVINGS" || req.AccountType == "CREDIT") && role != "admin" && role != "super_admin" {
+		c.JSON(http.StatusForbidden, gin.H{
+			"success": false,
+			"message": "Tài khoản Tiết kiệm (SAVINGS) và Tín dụng (CREDIT) chỉ có thể được mở bởi Quản trị viên",
+		})
+		return
+	}
+
 	account, err := h.service.CreateAccount(userID, req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{

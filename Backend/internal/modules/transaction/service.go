@@ -137,9 +137,10 @@ func (s *Service) Transfer(
 			return err
 		}
 
+		senderID := lockedSender.ID
 		newTransaction := &Transaction{
 			ReferenceCode:     generateReferenceCode(),
-			SenderAccountID:   lockedSender.ID,
+			SenderAccountID:   &senderID,
 			ReceiverAccountID: lockedReceiver.ID,
 			Amount:            req.Amount,
 			Currency:          lockedSender.Currency,
@@ -239,7 +240,7 @@ func (s *Service) GetTransactionDetail(
 	}
 
 	isOwner :=
-		transaction.SenderAccountID == paymentAccount.ID ||
+		(transaction.SenderAccountID != nil && *transaction.SenderAccountID == paymentAccount.ID) ||
 			transaction.ReceiverAccountID == paymentAccount.ID
 
 	if !isOwner {
@@ -271,3 +272,151 @@ func normalizePhone(phone string) string {
 	}
 	return digits
 }
+
+func (s *Service) Deposit(adminUserID uint, req DepositRequest) (*TransactionResponse, error) {
+	// 1. Tìm tài khoản nguồn (PAYMENT) của Admin
+	adminPaymentAccount, err := s.repo.FindPaymentAccountByUserID(adminUserID)
+	if err != nil {
+		return nil, err
+	}
+	if adminPaymentAccount == nil {
+		return nil, errors.New("không tìm thấy tài khoản nguồn PAYMENT của admin (vui lòng liên hệ hỗ trợ)")
+	}
+
+	// 2. Tìm tài khoản nhận (PAYMENT) của User bằng số tài khoản
+	receiverAccount, err := s.repo.FindAccountByNumber(req.ReceiverAccountNumber)
+	if err != nil {
+		return nil, err
+	}
+	if receiverAccount == nil {
+		return nil, errors.New("không tìm thấy số tài khoản người nhận")
+	}
+
+	if adminPaymentAccount.ID == receiverAccount.ID {
+		return nil, errors.New("không thể tự nạp tiền cho chính tài khoản Admin của mình")
+	}
+
+	// 3. Tìm thông tin tên Admin để ghi nhận lịch sử kiểm toán (audit log)
+	var adminUser struct {
+		FullName string
+	}
+	err = s.repo.db.Table("users").Where("id = ?", adminUserID).First(&adminUser).Error
+	if err != nil {
+		return nil, errors.New("không thể tìm thấy thông tin định danh của admin thực hiện")
+	}
+
+	var transactionResult *Transaction
+
+	err = s.repo.WithTx(func(tx *gorm.DB) error {
+		// Khóa 2 tài khoản theo thứ tự ID để chống deadlock
+		var lockedAdmin, lockedReceiver *account.Account
+		if adminPaymentAccount.ID < receiverAccount.ID {
+			lockedAdmin, err = s.repo.FindAccountByIDForUpdate(tx, adminPaymentAccount.ID)
+			if err != nil {
+				return err
+			}
+			lockedReceiver, err = s.repo.FindAccountByIDForUpdate(tx, receiverAccount.ID)
+			if err != nil {
+				return err
+			}
+		} else {
+			lockedReceiver, err = s.repo.FindAccountByIDForUpdate(tx, receiverAccount.ID)
+			if err != nil {
+				return err
+			}
+			lockedAdmin, err = s.repo.FindAccountByIDForUpdate(tx, adminPaymentAccount.ID)
+			if err != nil {
+				return err
+			}
+		}
+
+		if lockedAdmin == nil || lockedReceiver == nil {
+			return errors.New("không tìm thấy thông tin tài khoản")
+		}
+
+		if lockedReceiver.Status != "ACTIVE" {
+			return errors.New("tài khoản người nhận đang bị khóa hoặc không hoạt động")
+		}
+
+		if lockedAdmin.Currency != lockedReceiver.Currency {
+			return errors.New("không thể chuyển tiền khác loại tiền tệ")
+		}
+
+		// Nạp tiền: Ví Admin giảm (cho phép âm), ví User tăng
+		adminNewBalance := lockedAdmin.Balance - req.Amount
+		receiverNewBalance := lockedReceiver.Balance + req.Amount
+
+		if err := s.repo.UpdateAccountBalance(tx, lockedAdmin.ID, adminNewBalance); err != nil {
+			return err
+		}
+
+		if err := s.repo.UpdateAccountBalance(tx, lockedReceiver.ID, receiverNewBalance); err != nil {
+			return err
+		}
+
+		// Định dạng Description chứa thông tin đối soát
+		formattedDesc := fmt.Sprintf("Nạp tiền từ Admin: %s (STK: %s)", adminUser.FullName, lockedAdmin.AccountNumber)
+		if req.Description != "" {
+			formattedDesc = fmt.Sprintf("%s - %s", formattedDesc, req.Description)
+		}
+
+		newTransaction := &Transaction{
+			ReferenceCode:     generateReferenceCode(),
+			SenderAccountID:   &lockedAdmin.ID,
+			ReceiverAccountID: lockedReceiver.ID,
+			Amount:            req.Amount,
+			Currency:          lockedReceiver.Currency,
+			Type:              "DEPOSIT",
+			Status:            "SUCCESS",
+			Description:       formattedDesc,
+		}
+
+		if err := s.repo.CreateTransaction(tx, newTransaction); err != nil {
+			return err
+		}
+
+		transactionResult = newTransaction
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &TransactionResponse{
+		ID:                transactionResult.ID,
+		ReferenceCode:     transactionResult.ReferenceCode,
+		SenderAccountID:   transactionResult.SenderAccountID,
+		ReceiverAccountID: transactionResult.ReceiverAccountID,
+		Amount:            transactionResult.Amount,
+		Currency:          transactionResult.Currency,
+		Type:              transactionResult.Type,
+		Status:            transactionResult.Status,
+		Description:       transactionResult.Description,
+	}, nil
+}
+
+func (s *Service) GetTransactionsByAccountID(accountID uint) ([]TransactionResponse, error) {
+	transactions, err := s.repo.FindTransactionsByAccountID(accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	response := make([]TransactionResponse, 0)
+	for _, transaction := range transactions {
+		response = append(response, TransactionResponse{
+			ID:                transaction.ID,
+			ReferenceCode:     transaction.ReferenceCode,
+			SenderAccountID:   transaction.SenderAccountID,
+			ReceiverAccountID: transaction.ReceiverAccountID,
+			Amount:            transaction.Amount,
+			Currency:          transaction.Currency,
+			Type:              transaction.Type,
+			Status:            transaction.Status,
+			Description:       transaction.Description,
+		})
+	}
+
+	return response, nil
+}
+
