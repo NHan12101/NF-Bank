@@ -1,12 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { getAccessToken, apiFetch } from '../api';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isExpired = searchParams.get('expired') === '1';
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -61,6 +64,12 @@ export default function LoginPage() {
       <div className="glass-container" id="login-container">
         <h1 id="login-title">NF-Bank</h1>
         <p className="subtitle" id="login-subtitle">Đăng nhập vào tài khoản của bạn</p>
+
+        {isExpired && !error && (
+          <div className="alert alert-danger" id="login-expired-alert" role="alert" style={{ background: 'rgba(245, 158, 11, 0.1)', borderColor: 'rgba(245, 158, 11, 0.2)', color: '#fef08a' }}>
+            ⚠️ Phiên làm việc của bạn đã hết hạn do không hoạt động trong 5 phút. Vui lòng đăng nhập lại.
+          </div>
+        )}
 
         {error && (
           <div className="alert alert-danger" id="login-error-alert" role="alert">
@@ -117,5 +126,17 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <div className="spinner pulse-animation" />
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

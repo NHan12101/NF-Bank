@@ -135,8 +135,11 @@ func (s *Service) Register(req RegisterRequest) error {
 		return err
 	}
 
+	// In OTP ra console để hỗ trợ test local / debug nếu email gặp sự cố
+	fmt.Printf("\n🔑 [TEST/DEBUG] Đăng ký tài khoản: %s | OTP: %s\n\n", req.Email, otp)
+
 	if err := s.emailSender.SendRegisterOTP(req.Email, otp); err != nil {
-		return err
+		fmt.Printf("⚠️ Lỗi gửi Email OTP (SMTP): %v. Nhưng vẫn tiếp tục ở chế độ test (Đọc OTP từ log trên).\n", err)
 	}
 
 	return nil
@@ -251,7 +254,32 @@ func (s *Service) Login(req LoginRequest, userAgent string, ipAddress string, de
 		}, nil
 	}
 
-	// Đối với user bình thường
+	// Đối với user bình thường: tự động tạo OTP dự phòng gửi qua email và log ra console để test
+	otp, err := generateOTP()
+	if err == nil {
+		otpHash, err := bcrypt.GenerateFromPassword([]byte(otp), bcrypt.DefaultCost)
+		if err == nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			loginOTP := &OTP{
+				Email:     user.Email,
+				OTPHash:   string(otpHash),
+				Purpose:   "login",
+				CreatedAt: time.Now(),
+				ExpiresAt: time.Now().Add(5 * time.Minute),
+			}
+			_ = s.otpRepo.CreateOTP(ctx, loginOTP)
+
+			fmt.Printf("\n🔑 [TEST/DEBUG] OTP Đăng nhập của %s: %s\n\n", user.Email, otp)
+
+			// Gửi Email
+			if err := s.emailSender.SendLoginOTP(user.Email, otp); err != nil {
+				fmt.Printf("⚠️ Lỗi gửi Email OTP Đăng nhập: %v. Đăng nhập vẫn tiếp tục ở chế độ debug.\n", err)
+			}
+		}
+	}
+
 	return &AuthResponse{
 		SMSAuthRequired: true,
 		Phone:           user.Phone,

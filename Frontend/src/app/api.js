@@ -83,7 +83,7 @@ export async function apiFetch(endpoint, options = {}) {
         const newToken = refreshData.data?.access_token || refreshData.access_token;
         if (newToken) {
           setAccessToken(newToken);
-          
+
           // Retry the original request
           headers['Authorization'] = `Bearer ${newToken}`;
           response = await fetch(url, fetchOptions);

@@ -80,3 +80,17 @@ func (r *Repository) FindByUserIDAndType(
 
 	return &account, nil
 }
+
+func (r *Repository) FindUserRoleByID(userID uint) (string, error) {
+	var role string
+	err := r.db.Table("users").
+		Select("role").
+		Where("id = ?", userID).
+		Row().
+		Scan(&role)
+	if err != nil {
+		return "", err
+	}
+	return role, nil
+}
+

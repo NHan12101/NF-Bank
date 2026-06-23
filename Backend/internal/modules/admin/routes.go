@@ -27,6 +27,8 @@ func RegisterRoutes(
 		adminGroup.POST("/users/:id/accounts", handler.CreateUserAccount)
 		adminGroup.GET("/users/:id/accounts", handler.GetUserAccounts)
 		adminGroup.POST("/create-admin", handler.CreateAdmin)
+		adminGroup.POST("/deposit", handler.Deposit)
+		adminGroup.GET("/accounts/:account_id/transactions", handler.GetAccountTransactions)
 	}
 }
 

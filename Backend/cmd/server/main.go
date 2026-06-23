@@ -49,32 +49,6 @@ func main() {
 	}
 	log.Println("✅ MySQL Auto Migration hoàn tất!")
 
-	// Seed Super Admin
-	var count int64
-	if err := database.DB.Model(&auth.User{}).Where("role = ?", "super_admin").Count(&count).Error; err != nil {
-		log.Printf("⚠️ Lỗi kiểm tra tài khoản Super Admin: %v", err)
-	} else if count == 0 {
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte("SuperAdmin123!"), bcrypt.DefaultCost)
-		if err != nil {
-			log.Fatalf("❌ Lỗi mã hóa mật khẩu Super Admin: %v", err)
-		}
-		superAdmin := auth.User{
-			FullName:     "Super Admin",
-			Email:        "superadmin@nfbank.com",
-			PasswordHash: string(hashedPassword),
-			Phone:        "0999999999",
-			Role:         "super_admin",
-			IsVerified:   true,
-			IsLocked:     false,
-			TOTPSecret:   "KGF2MOLIONATKJ5IWJW4FJYUVFS7KHPT",
-		}
-		if err := database.DB.Create(&superAdmin).Error; err != nil {
-			log.Printf("⚠️ Lỗi tạo tài khoản Super Admin mặc định: %v", err)
-		} else {
-			log.Println("✅ Đã tạo tài khoản Super Admin mặc định (superadmin@nfbank.com / SuperAdmin123!)")
-		}
-	}
-
 	// Khởi tạo Firebase Admin Client
 	firebaseClient, err := firebase.InitFirebase(cfg.FirebaseCredentials)
 	if err != nil {
@@ -115,6 +89,37 @@ func main() {
 	accountRepo := account.NewRepository(database.DB)
 	accountService := account.NewService(accountRepo)
 
+	// Seed Super Admin (Được dời xuống sau khi khởi tạo accountService để tự tạo ví)
+	var count int64
+	if err := database.DB.Model(&auth.User{}).Where("role = ?", "super_admin").Count(&count).Error; err != nil {
+		log.Printf("⚠️ Lỗi kiểm tra tài khoản Super Admin: %v", err)
+	} else if count == 0 {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte("SuperAdmin123!"), bcrypt.DefaultCost)
+		if err != nil {
+			log.Fatalf("❌ Lỗi mã hóa mật khẩu Super Admin: %v", err)
+		}
+		superAdmin := auth.User{
+			FullName:     "Super Admin",
+			Email:        "superadmin@nfbank.com",
+			PasswordHash: string(hashedPassword),
+			Phone:        "0999999999",
+			Role:         "super_admin",
+			IsVerified:   true,
+			IsLocked:     false,
+			TOTPSecret:   "KGF2MOLIONATKJ5IWJW4FJYUVFS7KHPT",
+		}
+		if err := database.DB.Create(&superAdmin).Error; err != nil {
+			log.Printf("⚠️ Lỗi tạo tài khoản Super Admin mặc định: %v", err)
+		} else {
+			log.Println("✅ Đã tạo tài khoản Super Admin mặc định (superadmin@nfbank.com / SuperAdmin123!)")
+			if err := accountService.CreateDefaultPaymentAccount(superAdmin.ID); err != nil {
+				log.Printf("⚠️ Lỗi tạo tài khoản ví mặc định cho Super Admin: %v", err)
+			} else {
+				log.Println("✅ Đã cấp tài khoản ví mặc định cho Super Admin!")
+			}
+		}
+	}
+
 	userRepo := user.NewRepository(database.DB)
 	userService := user.NewService(userRepo)
 
@@ -133,13 +138,13 @@ func main() {
 	accountHandler := account.NewHandler(accountService)
 	userHandler := user.NewHandler(userService)
 
-	adminRepo := admin.NewRepository(database.DB)
-	adminService := admin.NewService(adminRepo, accountService)
-	adminHandler := admin.NewHandler(adminService)
-
 	transactionRepo := transaction.NewRepository(database.DB)
 	transactionService := transaction.NewService(transactionRepo, firebaseClient)
 	transactionHandler := transaction.NewHandler(transactionService)
+
+	adminRepo := admin.NewRepository(database.DB)
+	adminService := admin.NewService(adminRepo, accountService, transactionService)
+	adminHandler := admin.NewHandler(adminService)
 
 	api := r.Group("/api/v1")
 	auth.RegisterRoutes(api, authHandler)

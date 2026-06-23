@@ -4,20 +4,23 @@ import (
 	"bank-service/internal/infrastructure/totp"
 	"bank-service/internal/modules/account"
 	"bank-service/internal/modules/auth"
+	"bank-service/internal/modules/transaction"
 	"errors"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Service struct {
-	repo           *Repository
-	accountService *account.Service
+	repo               *Repository
+	accountService     *account.Service
+	transactionService *transaction.Service
 }
 
-func NewService(repo *Repository, accountService *account.Service) *Service {
+func NewService(repo *Repository, accountService *account.Service, transactionService *transaction.Service) *Service {
 	return &Service{
-		repo:           repo,
-		accountService: accountService,
+		repo:               repo,
+		accountService:     accountService,
+		transactionService: transactionService,
 	}
 }
 
@@ -150,6 +153,10 @@ func (s *Service) CreateAdmin(req CreateAdminRequest) (*CreateAdminResponse, err
 		return nil, err
 	}
 
+	if err := s.accountService.CreateDefaultPaymentAccount(adminUser.ID); err != nil {
+		return nil, err
+	}
+
 	return &CreateAdminResponse{
 		ID:         adminUser.ID,
 		FullName:   adminUser.FullName,
@@ -159,4 +166,12 @@ func (s *Service) CreateAdmin(req CreateAdminRequest) (*CreateAdminResponse, err
 		TOTPSecret: adminUser.TOTPSecret,
 		CreatedAt:  adminUser.CreatedAt,
 	}, nil
+}
+
+func (s *Service) Deposit(adminUserID uint, req transaction.DepositRequest) (*transaction.TransactionResponse, error) {
+	return s.transactionService.Deposit(adminUserID, req)
+}
+
+func (s *Service) GetAccountTransactions(accountID uint) ([]transaction.TransactionResponse, error) {
+	return s.transactionService.GetTransactionsByAccountID(accountID)
 }

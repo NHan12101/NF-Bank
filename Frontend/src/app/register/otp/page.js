@@ -190,18 +190,13 @@ export default function RegisterOTPPage() {
     try {
       let payload = { email };
 
-      if (otpChannel === 'sms') {
-        if (!confirmationResult) {
-          setError('Không tìm thấy thông tin phiên gửi SMS OTP. Vui lòng gửi lại.');
-          setLoading(false);
-          return;
-        }
+      if (otpChannel === 'sms' && confirmationResult) {
         // Verify SMS OTP on Firebase and get ID Token
         const credential = await confirmationResult.confirm(otpCode);
         const idToken = await credential.user.getIdToken();
         payload.id_token = idToken;
       } else {
-        // Verify via Email OTP
+        // Verify via Email OTP or direct OTP fallback if Firebase failed
         payload.otp = otpCode;
       }
 
@@ -291,7 +286,7 @@ export default function RegisterOTPPage() {
             id="reg-otp-submit-btn"
             type="submit"
             className="btn btn-primary"
-            disabled={loading || (otpChannel === 'sms' && !confirmationResult)}
+            disabled={loading}
           >
             {loading ? 'Đang xác thực...' : 'Xác thực'}
           </button>
