@@ -4,7 +4,7 @@ const API_BASE = '/api/v1';
 
 export function getAccessToken() {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('access_token');
+    return sessionStorage.getItem('access_token');
   }
   return null;
 }
@@ -12,16 +12,16 @@ export function getAccessToken() {
 export function setAccessToken(token) {
   if (typeof window !== 'undefined') {
     if (token) {
-      localStorage.setItem('access_token', token);
+      sessionStorage.setItem('access_token', token);
     } else {
-      localStorage.removeItem('access_token');
+      sessionStorage.removeItem('access_token');
     }
   }
 }
 
 export function getUser() {
   if (typeof window !== 'undefined') {
-    const userStr = localStorage.getItem('user');
+    const userStr = sessionStorage.getItem('user');
     try {
       return userStr ? JSON.parse(userStr) : null;
     } catch (e) {
@@ -34,9 +34,9 @@ export function getUser() {
 export function setUser(user) {
   if (typeof window !== 'undefined') {
     if (user) {
-      localStorage.setItem('user', JSON.stringify(user));
+      sessionStorage.setItem('user', JSON.stringify(user));
     } else {
-      localStorage.removeItem('user');
+      sessionStorage.removeItem('user');
     }
   }
 }
