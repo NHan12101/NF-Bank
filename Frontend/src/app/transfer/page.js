@@ -36,12 +36,9 @@ export default function TransferPage() {
           setAccounts(data.data || []);
 
           // Set default description
-          const userObj = localStorage.getItem('user');
-          if (userObj) {
-            try {
-              const u = JSON.parse(userObj);
-              setDescription(`${u.fullName || 'User'} chuyen tien`);
-            } catch (e) { }
+          const u = getUser();
+          if (u) {
+            setDescription(`${u.fullName || u.full_name || 'User'} chuyen tien`);
           }
         } else {
           setError(data.message || 'Không thể tải thông tin tài khoản nguồn.');
@@ -69,28 +66,24 @@ export default function TransferPage() {
     setOtpError('');
     setOtpLoading(true);
 
-    // Tìm số điện thoại của người dùng từ localStorage hoặc tải từ profile
+    // Tìm số điện thoại của người dùng từ sessionStorage hoặc tải từ profile
     let phone = '';
-    const userObj = localStorage.getItem('user');
-    if (userObj) {
-      try {
-        const u = JSON.parse(userObj);
-        phone = u.phone;
-      } catch (err) { }
+    const u = getUser();
+    if (u) {
+      phone = u.phone;
     }
 
     if (!phone) {
-      // Gọi API lấy profile nếu chưa có phone trong localStorage
+      // Gọi API lấy profile nếu chưa có phone trong sessionStorage
       try {
         const profileRes = await apiFetch('/users/profile');
         const profileData = await profileRes.json();
         if (profileRes.ok && profileData.success && profileData.data.phone) {
           phone = profileData.data.phone;
           setUserPhone(phone);
-          // Lưu lại vào localStorage
-          const u = userObj ? JSON.parse(userObj) : {};
-          u.phone = phone;
-          localStorage.setItem('user', JSON.stringify(u));
+          // Lưu lại vào sessionStorage
+          const updatedUser = u ? { ...u, phone } : { phone };
+          setUser(updatedUser);
         }
       } catch (err) {
         console.error("Lấy thông tin profile thất bại:", err);

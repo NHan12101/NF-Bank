@@ -15,12 +15,14 @@ import (
 	"bank-service/internal/modules/auth"
 	"bank-service/internal/modules/credit"
 	"bank-service/internal/modules/notification"
+	"bank-service/internal/modules/payment"
 	"bank-service/internal/modules/savings"
 	"bank-service/internal/modules/transaction"
 	"bank-service/internal/modules/user"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 func main() {
@@ -44,6 +46,8 @@ func main() {
 		&credit.CreditDetail{},
 		&user.UserProfile{},
 		&transaction.Transaction{},
+		&payment.Merchant{},
+		&payment.PaymentSession{},
 	); err != nil {
 		log.Fatalf("❌ MySQL Auto Migration thất bại: %v", err)
 	}
@@ -84,8 +88,6 @@ func main() {
 	}
 	log.Println("✅ TTL Index cho Verify Register MongoDB đã được cấu hình!")
 
-	// SỬA: truyền thêm verifyRegisterRepo vào auth service
-
 	accountRepo := account.NewRepository(database.DB)
 	accountService := account.NewService(accountRepo)
 
@@ -120,6 +122,12 @@ func main() {
 		}
 	}
 
+	// Seed 2 tài khoản khách hàng kiểm thử mặc định (Nguyen Van A và Tran Thi B)
+	seedTestUsers(database.DB, accountService)
+
+	// Seed Merchant đối tác (App Âm Nhạc)
+	seedMerchant(database.DB, accountService)
+
 	userRepo := user.NewRepository(database.DB)
 	userService := user.NewService(userRepo)
 
@@ -146,12 +154,18 @@ func main() {
 	adminService := admin.NewService(adminRepo, accountService, transactionService)
 	adminHandler := admin.NewHandler(adminService)
 
+	// Khởi tạo payment module
+	paymentRepo := payment.NewRepository(database.DB)
+	paymentService := payment.NewService(paymentRepo, firebaseClient, cfg)
+	paymentHandler := payment.NewHandler(paymentService)
+
 	api := r.Group("/api/v1")
 	auth.RegisterRoutes(api, authHandler)
 	account.RegisterRoutes(api, accountHandler, cfg)
 	user.RegisterRoutes(api, userHandler, cfg)
 	transaction.RegisterRoutes(api, transactionHandler, cfg)
 	admin.RegisterRoutes(api, adminHandler, cfg)
+	payment.RegisterRoutes(api, paymentHandler, cfg)
 
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -165,5 +179,107 @@ func main() {
 
 	if err := r.Run(port); err != nil {
 		log.Fatalf("❌ Lỗi nghiêm trọng khi khởi chạy server: %v", err)
+	}
+}
+
+func seedTestUsers(db *gorm.DB, accountService *account.Service) {
+	usersToSeed := []struct {
+		Email    string
+		FullName string
+		Phone    string
+		Password string
+	}{
+		{"testuser1@nfbank.com", "Nguyen Van A", "+84999000001", "Testuser123!"},
+		{"testuser2@nfbank.com", "Tran Thi B", "+84999000002", "Testuser123!"},
+	}
+
+	for _, u := range usersToSeed {
+		var count int64
+		if err := db.Model(&auth.User{}).Where("email = ?", u.Email).Count(&count).Error; err == nil && count == 0 {
+			hashed, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
+			if err != nil {
+				log.Printf("⚠️ Lỗi mã hóa mật khẩu test user %s: %v", u.Email, err)
+				continue
+			}
+			user := auth.User{
+				FullName:     u.FullName,
+				Email:        u.Email,
+				PasswordHash: string(hashed),
+				Phone:        u.Phone,
+				Role:         "user",
+				IsVerified:   true,
+				IsLocked:     false,
+			}
+			if err := db.Create(&user).Error; err != nil {
+				log.Printf("⚠️ Lỗi tạo test user %s: %v", u.Email, err)
+			} else {
+				log.Printf("✅ Đã tạo test user %s (Testuser123!)", u.Email)
+				if err := accountService.CreateDefaultPaymentAccount(user.ID); err != nil {
+					log.Printf("⚠️ Lỗi cấp tài khoản ví cho test user %s: %v", u.Email, err)
+				}
+			}
+		}
+	}
+}
+
+func seedMerchant(db *gorm.DB, accountService *account.Service) {
+	// 1. Seed Merchant User
+	merchantEmail := "music_app_merchant@nfbank.com"
+	var userCount int64
+	var merchantUser auth.User
+
+	err := db.Model(&auth.User{}).Where("email = ?", merchantEmail).Count(&userCount).Error
+	if err == nil && userCount == 0 {
+		hashed, err := bcrypt.GenerateFromPassword([]byte("Merchant123!"), bcrypt.DefaultCost)
+		if err != nil {
+			log.Fatalf("❌ Lỗi mã hóa mật khẩu merchant user: %v", err)
+		}
+		merchantUser = auth.User{
+			FullName:     "Music App Merchant",
+			Email:        merchantEmail,
+			PasswordHash: string(hashed),
+			Phone:        "+84888000001",
+			Role:         "user",
+			IsVerified:   true,
+			IsLocked:     false,
+		}
+		if err := db.Create(&merchantUser).Error; err != nil {
+			log.Printf("⚠️ Lỗi tạo tài khoản merchant user: %v", err)
+			return
+		}
+		log.Println("✅ Đã tạo tài khoản Merchant User mặc định (music_app_merchant@nfbank.com)")
+		if err := accountService.CreateDefaultPaymentAccount(merchantUser.ID); err != nil {
+			log.Printf("⚠️ Lỗi tạo tài khoản ví cho Merchant User: %v", err)
+			return
+		}
+	} else {
+		db.Where("email = ?", merchantEmail).First(&merchantUser)
+	}
+
+	// 2. Lấy ID tài khoản ví thanh toán PAYMENT của Merchant User
+	var merchantAccount account.Account
+	err = db.Where("user_id = ? AND account_type = ?", merchantUser.ID, "PAYMENT").First(&merchantAccount).Error
+	if err != nil {
+		log.Printf("⚠️ Không tìm thấy ví thanh toán cho Merchant User: %v", err)
+		return
+	}
+
+	// 3. Seed Merchant configuration
+	partnerCode := "NFBANK_PROD_OR_TEST_ID"
+	var merchantCount int64
+	err = db.Table("merchants").Where("partner_code = ?", partnerCode).Count(&merchantCount).Error
+	if err == nil && merchantCount == 0 {
+		m := payment.Merchant{
+			PartnerCode:      partnerCode,
+			AccessKey:        "your_nfbank_access_key_here",
+			SecretKey:        "your_nfbank_secret_key_here",
+			MerchantName:     "App Âm Nhạc (Music App)",
+			PaymentAccountID: merchantAccount.ID,
+		}
+		if err := db.Create(&m).Error; err != nil {
+			log.Printf("⚠️ Lỗi tạo cấu hình đối tác Merchant: %v", err)
+		} else {
+			log.Println("✅ Đã tạo cấu hình đối tác Merchant (App Âm Nhạc) thành công!")
+		}
 	}
 }
