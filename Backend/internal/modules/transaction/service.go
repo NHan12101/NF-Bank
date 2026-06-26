@@ -3,6 +3,7 @@ package transaction
 import (
 	"bank-service/internal/infrastructure/firebase"
 	"bank-service/internal/modules/account"
+	"bank-service/internal/modules/notification"
 	"errors"
 	"fmt"
 	"regexp"
@@ -14,12 +15,14 @@ import (
 type Service struct {
 	repo           *Repository
 	firebaseClient *firebase.Client
+	notiService    *notification.Service
 }
 
-func NewService(repo *Repository, firebaseClient *firebase.Client) *Service {
+func NewService(repo *Repository, firebaseClient *firebase.Client, notiService *notification.Service) *Service {
 	return &Service{
 		repo:           repo,
 		firebaseClient: firebaseClient,
+		notiService:    notiService,
 	}
 }
 
@@ -150,6 +153,18 @@ func (s *Service) Transfer(
 		}
 
 		if err := s.repo.CreateTransaction(tx, newTransaction); err != nil {
+			return err
+		}
+
+		// Tạo thông báo biến động số dư cho người gửi
+		senderMsg := fmt.Sprintf("Tài khoản của bạn đã bị trừ -%d VND chuyển khoản đến số tài khoản %s. Số dư mới: %d VND. Nội dung: %s", req.Amount, lockedReceiver.AccountNumber, senderNewBalance, req.Description)
+		if err := s.notiService.CreateNotification(tx, lockedSender.UserID, "BALANCE_FLUCTUATION", "Biến động số dư (-)", senderMsg); err != nil {
+			return err
+		}
+
+		// Tạo thông báo biến động số dư cho người nhận
+		receiverMsg := fmt.Sprintf("Tài khoản của bạn đã được cộng +%d VND từ số tài khoản %s. Số dư mới: %d VND. Nội dung: %s", req.Amount, lockedSender.AccountNumber, receiverNewBalance, req.Description)
+		if err := s.notiService.CreateNotification(tx, lockedReceiver.UserID, "BALANCE_FLUCTUATION", "Biến động số dư (+)", receiverMsg); err != nil {
 			return err
 		}
 
@@ -372,6 +387,12 @@ func (s *Service) Deposit(adminUserID uint, req DepositRequest) (*TransactionRes
 		}
 
 		if err := s.repo.CreateTransaction(tx, newTransaction); err != nil {
+			return err
+		}
+
+		// Tạo thông báo biến động số dư cho người nhận (nạp tiền)
+		receiverMsg := fmt.Sprintf("Tài khoản của bạn đã được cộng +%d VND từ giao dịch nạp tiền Admin. Số dư mới: %d VND. Nội dung: %s", req.Amount, receiverNewBalance, formattedDesc)
+		if err := s.notiService.CreateNotification(tx, lockedReceiver.UserID, "BALANCE_FLUCTUATION", "Biến động số dư (+)", receiverMsg); err != nil {
 			return err
 		}
 
