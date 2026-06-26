@@ -146,8 +146,13 @@ func main() {
 	accountHandler := account.NewHandler(accountService)
 	userHandler := user.NewHandler(userService)
 
+	// Khởi tạo notification module
+	notificationRepo := notification.NewRepository(database.DB)
+	notificationService := notification.NewService(notificationRepo)
+	notificationHandler := notification.NewHandler(notificationService)
+
 	transactionRepo := transaction.NewRepository(database.DB)
-	transactionService := transaction.NewService(transactionRepo, firebaseClient)
+	transactionService := transaction.NewService(transactionRepo, firebaseClient, notificationService)
 	transactionHandler := transaction.NewHandler(transactionService)
 
 	adminRepo := admin.NewRepository(database.DB)
@@ -156,8 +161,13 @@ func main() {
 
 	// Khởi tạo payment module
 	paymentRepo := payment.NewRepository(database.DB)
-	paymentService := payment.NewService(paymentRepo, firebaseClient, cfg)
+	paymentService := payment.NewService(paymentRepo, firebaseClient, cfg, notificationService)
 	paymentHandler := payment.NewHandler(paymentService)
+
+	// Khởi tạo savings module
+	savingsRepo := savings.NewRepository(database.DB)
+	savingsService := savings.NewService(savingsRepo, notificationService)
+	savingsHandler := savings.NewHandler(savingsService)
 
 	api := r.Group("/api/v1")
 	auth.RegisterRoutes(api, authHandler)
@@ -166,6 +176,8 @@ func main() {
 	transaction.RegisterRoutes(api, transactionHandler, cfg)
 	admin.RegisterRoutes(api, adminHandler, cfg)
 	payment.RegisterRoutes(api, paymentHandler, cfg)
+	notification.RegisterRoutes(api, notificationHandler, cfg)
+	savings.RegisterRoutes(api, savingsHandler, cfg)
 
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{

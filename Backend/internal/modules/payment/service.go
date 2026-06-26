@@ -17,6 +17,7 @@ import (
 	"bank-service/internal/config"
 	"bank-service/internal/infrastructure/firebase"
 	"bank-service/internal/modules/account"
+	"bank-service/internal/modules/notification"
 	"bank-service/internal/modules/transaction"
 
 	"gorm.io/gorm"
@@ -26,13 +27,15 @@ type Service struct {
 	repo           *Repository
 	firebaseClient *firebase.Client
 	cfg            *config.Config
+	notiService    *notification.Service
 }
 
-func NewService(repo *Repository, firebaseClient *firebase.Client, cfg *config.Config) *Service {
+func NewService(repo *Repository, firebaseClient *firebase.Client, cfg *config.Config, notiService *notification.Service) *Service {
 	return &Service{
 		repo:           repo,
 		firebaseClient: firebaseClient,
 		cfg:            cfg,
+		notiService:    notiService,
 	}
 }
 
@@ -237,6 +240,18 @@ func (s *Service) ConfirmPayment(userID uint, req ConfirmPaymentRequest) (*strin
 		}
 
 		if err := s.repo.CreateTransaction(tx, newTx); err != nil {
+			return err
+		}
+
+		// Tạo thông báo biến động số dư cho khách hàng (trừ tiền mua hàng)
+		customerMsg := fmt.Sprintf("Tài khoản của bạn đã bị trừ -%d VND để thanh toán hóa đơn cho đối tác %s (Mã đơn hàng: %s). Số dư mới: %d VND.", session.Amount, session.Merchant.MerchantName, session.OrderID, userNewBalance)
+		if err := s.notiService.CreateNotification(tx, userID, "PAYMENT_GATEWAY", "Thanh toán thành công", customerMsg); err != nil {
+			return err
+		}
+
+		// Tạo thông báo biến động số dư cho đối tác/merchant (cộng tiền bán hàng)
+		merchantMsg := fmt.Sprintf("Tài khoản ví của bạn đã được cộng +%d VND từ thanh toán hóa đơn %s của khách hàng. Số dư mới: %d VND.", session.Amount, session.OrderID, merchantNewBalance)
+		if err := s.notiService.CreateNotification(tx, lockedMerchant.UserID, "PAYMENT_GATEWAY", "Nhận tiền thanh toán", merchantMsg); err != nil {
 			return err
 		}
 
