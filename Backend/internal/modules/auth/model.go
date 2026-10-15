@@ -42,6 +42,7 @@ type RefreshToken struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	UserID    uint      `gorm:"not null;index" json:"user_id"`
 	User      User      `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	DeviceID  string    `gorm:"type:varchar(255);default:''" json:"device_id"`
 	TokenHash string    `gorm:"type:varchar(255);not null;uniqueIndex" json:"-"`
 	IsRevoked bool      `gorm:"default:false" json:"is_revoked"`
 	ExpiresAt time.Time `gorm:"not null" json:"expires_at"`

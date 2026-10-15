@@ -129,7 +129,7 @@ class AuthService {
 
   Future<void> logout() async {
     try {
-      await ApiService.post(ApiUrl.logout);
+      await ApiService.post(ApiUrl.logout, auth: true);
     } on ApiException {
     } finally {
       await TokenStorage.clearAuth();

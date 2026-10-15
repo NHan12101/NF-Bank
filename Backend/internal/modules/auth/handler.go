@@ -2,7 +2,9 @@ package auth
 
 import (
 	"net/http"
+	"strings"
 
+	jwtProvider "bank-service/internal/infrastructure/jwt"
 	"bank-service/internal/shared/response"
 
 	"github.com/gin-gonic/gin"
@@ -107,17 +109,21 @@ func setDeviceCookie(c *gin.Context, deviceID string, secure bool) {
 
 // Logout xử lý API logout
 func (h *Handler) Logout(c *gin.Context) {
-
-	refreshToken, err := c.Cookie("refresh_token")
-	if err != nil {
-		response.Error(c, http.StatusUnauthorized, "Không tìm thấy refresh token", nil)
-		return
+	// 1. Thu hồi từ Cookie nếu có (Web/SPA)
+	refreshToken, _ := c.Cookie("refresh_token")
+	if refreshToken != "" {
+		_ = h.service.Logout(refreshToken)
 	}
 
-	err = h.service.Logout(refreshToken)
-	if err != nil {
-		response.Error(c, http.StatusInternalServerError, "Đăng xuất thất bại", err)
-		return
+	// 2. Thu hồi từ Authorization Header Bearer AccessToken (Mobile App)
+	authHeader := c.GetHeader("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		claims, err := jwtProvider.ValidateToken(tokenString, h.service.cfg.AccessTokenSecret)
+		if err == nil && claims != nil {
+			_ = h.service.repo.RevokeAllUserRefreshTokens(claims.UserID)
+			_ = h.service.repo.IncreaseSessionVersion(claims.UserID)
+		}
 	}
 
 	// Xóa refresh token cookie
