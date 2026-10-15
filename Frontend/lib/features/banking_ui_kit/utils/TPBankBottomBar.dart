@@ -76,41 +76,17 @@ class TPBankBottomBar extends StatelessWidget {
                       ),
                     ),
 
-                    // Item 1: Chợ tiện ích
+                    // Khoảng trống cho nút QR nổi ở giữa
+                    const SizedBox(width: 80),
+
+                    // Item 1: Cá nhân
                     Expanded(
                       child: _buildNavItem(
                         index: 1,
-                        label: isEn ? 'Utilities' : 'Chợ tiện ích',
-                        iconData: Icons.grid_view_rounded,
-                        isSelected: currentIndex == 1,
-                        onTap: () => onTap(1),
-                        isDark: isDark,
-                      ),
-                    ),
-
-                    // Item 2: Space for Center QR Button
-                    const SizedBox(width: 64),
-
-                    // Item 3: Dịch vụ NH
-                    Expanded(
-                      child: _buildNavItem(
-                        index: 3,
-                        label: isEn ? 'Banking' : 'Dịch vụ NH',
-                        iconData: Icons.account_balance_rounded,
-                        isSelected: currentIndex == 3,
-                        onTap: () => onTap(3),
-                        isDark: isDark,
-                      ),
-                    ),
-
-                    // Item 4: Cá nhân
-                    Expanded(
-                      child: _buildNavItem(
-                        index: 4,
                         label: isEn ? 'Profile' : 'Cá Nhân',
                         iconData: Icons.person_outline_rounded,
-                        isSelected: currentIndex == 4,
-                        onTap: () => onTap(4),
+                        isSelected: currentIndex == 1,
+                        onTap: () => onTap(1),
                         isDark: isDark,
                       ),
                     ),

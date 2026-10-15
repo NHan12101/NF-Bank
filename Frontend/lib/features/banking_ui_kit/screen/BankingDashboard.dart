@@ -4,8 +4,6 @@ import '../utils/TPBankBottomBar.dart';
 
 import 'BankingHome1.dart';
 import 'BankingMenu.dart';
-import 'BankingPayment.dart';
-import '../../transfers/screens/transfer_page.dart';
 import '../../transfers/screens/qr_scanner_page.dart';
 import '../../../core/services/session_heartbeat_service.dart';
 
@@ -29,9 +27,6 @@ class _BankingDashboardState extends State<BankingDashboard> {
     selectedIndex = 0;
     pages = [
       BankingHome1(onSelectTab: _onItemTapped),
-      const BankingPayment(),
-      const SizedBox.shrink(), // QR page mở qua Navigator modal để tiết kiệm tài nguyên Camera
-      const TransferPage(),
       const BankingMenu(),
     ];
   }
@@ -43,10 +38,6 @@ class _BankingDashboardState extends State<BankingDashboard> {
   }
 
   void _onItemTapped(int index) {
-    if (index == 2) {
-      _openQRScanner();
-      return;
-    }
     setState(() {
       selectedIndex = index;
     });
@@ -72,7 +63,7 @@ class _BankingDashboardState extends State<BankingDashboard> {
       body: SafeArea(
         top: false,
         child: IndexedStack(
-          index: selectedIndex == 2 ? 0 : selectedIndex,
+          index: selectedIndex,
           children: pages,
         ),
       ),

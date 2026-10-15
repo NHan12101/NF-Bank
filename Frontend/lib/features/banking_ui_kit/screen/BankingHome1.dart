@@ -13,6 +13,8 @@ import '../utils/BankingImages.dart';
 import '../../banking/screens/user_pages.dart';
 import '../../auth/screens/login_screen.dart';
 import '../../transfers/widgets/user_receive_qr_dialog.dart';
+import '../../transfers/screens/transfer_page.dart';
+import 'BankingPayment.dart';
 
 class BankingHome1 extends StatefulWidget {
   static String tag = '/BankingHome1';
@@ -124,22 +126,35 @@ class BankingHome1State extends State<BankingHome1> {
     );
   }
 
-  void _openTransactions() {
+  void _openTransfer() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const TransferPage()),
+    );
+  }
+
+  void _openPayment() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const BankingPayment()),
+    );
+  }
+
+  void _openNotifications() {
     final isEn = LanguageController.instance.isEnglish;
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => Scaffold(
+        builder: (context) => Scaffold(
           appBar: AppBar(
             backgroundColor: const Color(0xFF562875),
-            foregroundColor: Colors.white,
             iconTheme: const IconThemeData(color: Colors.white),
             title: Text(
-              isEn ? 'Transactions' : 'Lịch sử giao dịch',
+              isEn ? 'Notifications' : 'Thông báo',
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
           ),
-          body: const TransactionsPage(),
+          body: const NotificationsPage(),
         ),
       ),
     );
@@ -406,13 +421,13 @@ class BankingHome1State extends State<BankingHome1> {
                             icon: Icons.send_rounded,
                             label: isEn ? 'Transfer' : 'Chuyển tiền',
                             color: const Color(0xFFF7941D),
-                            onTap: () => widget.onSelectTab?.call(3),
+                            onTap: _openTransfer,
                           ),
                           _buildQuickActionButton(
                             icon: Icons.phone_android_rounded,
                             label: isEn ? 'Top Up' : 'Nạp tiền',
                             color: const Color(0xFF562875),
-                            onTap: () => widget.onSelectTab?.call(1),
+                            onTap: _openPayment,
                           ),
                           _buildQuickActionButton(
                             icon: Icons.savings_rounded,
@@ -451,7 +466,7 @@ class BankingHome1State extends State<BankingHome1> {
                               ),
                             ),
                             TextButton(
-                              onPressed: _openTransactions,
+                              onPressed: _openNotifications,
                               child: Text(
                                 isEn ? 'View all' : 'Xem tất cả',
                                 style: const TextStyle(
