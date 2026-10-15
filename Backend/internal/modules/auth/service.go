@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -199,6 +200,42 @@ func (s *Service) Login(req LoginRequest, userAgent string, ipAddress string, de
 	)
 	if err != nil {
 		return nil, errors.New("Tài khoản hoặc mật khẩu không đúng")
+	}
+
+	// Kiểm tra chế độ 1 thiết bị duy nhất: Nếu tài khoản đang có phiên hoạt động trên thiết bị khác
+	activeSessions, sessionErr := s.repo.GetActiveSessions(user.ID)
+	if sessionErr == nil && len(activeSessions) > 0 {
+		// 1. Vô hiệu hóa toàn bộ phiên trên thiết bị cũ (đá văng thiết bị cũ ngay tức thì)
+		_ = s.repo.RevokeAllUserRefreshTokens(user.ID)
+		_ = s.repo.IncreaseSessionVersion(user.ID)
+
+		// 2. Gửi email cảnh báo thiết bị lạ đăng nhập ngay lập tức
+		if s.emailClient != nil && strings.TrimSpace(user.Email) != "" {
+			location := resolveLocation(ipAddress)
+			devName := parseDeviceName(userAgent)
+			log.Printf("📧 Đang gửi email cảnh báo thiết bị lạ đăng nhập tới: %s (User: %s)", user.Email, user.FullName)
+			go func(toEmail, name, phone, ip, loc, dev string, t time.Time) {
+				sendErr := s.emailClient.SendLoginAlertEmail(toEmail, email.LoginAlertData{
+					FullName:   name,
+					Phone:      phone,
+					Email:      toEmail,
+					LoginTime:  t,
+					IPAddress:  ip,
+					Location:   loc,
+					DeviceName: dev,
+				})
+				if sendErr != nil {
+					log.Printf("⚠️ Gửi email cảnh báo thất bại: %v", sendErr)
+				} else {
+					log.Printf("✅ Đã gửi email cảnh báo thành công tới %s", toEmail)
+				}
+			}(user.Email, user.FullName, user.Phone, ipAddress, location, devName, time.Now())
+		} else {
+			log.Printf("⚠️ Người dùng %s không có email để gửi cảnh báo đăng nhập", user.Phone)
+		}
+
+		// 3. Thiết bị mới (đăng nhập sau) CŨNG CHƯA ĐƯỢC VÀO LUÔN, yêu cầu đăng nhập lại lần 2!
+		return nil, errors.New("Phát hiện tài khoản đang đăng nhập trên thiết bị khác. Đã ngắt kết nối thiết bị cũ, vui lòng đăng nhập lại để tiếp tục.")
 	}
 
 	// Phân loại xử lý dựa trên vai trò
@@ -699,8 +736,43 @@ func (s *Service) ConfirmLogin(req ConfirmLoginRequest, userAgent string, ipAddr
 		deviceID = newDeviceID
 	}
 
-	// Gửi email cảnh báo thiết bị lạ/thiết bị mới đăng nhập nếu người dùng có Email
-	if s.emailClient != nil && strings.TrimSpace(user.Email) != "" {
+	// Kiểm tra nếu có phiên khác đang hoạt động trên tài khoản này
+	activeSessions, sessionErr := s.repo.GetActiveSessions(user.ID)
+	if sessionErr == nil && len(activeSessions) > 0 {
+		// 1. Đá văng thiết bị cũ
+		_ = s.repo.RevokeAllUserRefreshTokens(user.ID)
+		_ = s.repo.IncreaseSessionVersion(user.ID)
+
+		// 2. Gửi email cảnh báo
+		if s.emailClient != nil && strings.TrimSpace(user.Email) != "" {
+			log.Printf("📧 Đang gửi email cảnh báo thiết bị lạ đăng nhập tới: %s (User: %s)", user.Email, user.FullName)
+			go func(toEmail, name, phone, ip, loc, dev string, t time.Time) {
+				sendErr := s.emailClient.SendLoginAlertEmail(toEmail, email.LoginAlertData{
+					FullName:   name,
+					Phone:      phone,
+					Email:      toEmail,
+					LoginTime:  t,
+					IPAddress:  ip,
+					Location:   loc,
+					DeviceName: dev,
+				})
+				if sendErr != nil {
+					log.Printf("⚠️ Gửi email cảnh báo thất bại: %v", sendErr)
+				} else {
+					log.Printf("✅ Đã gửi email cảnh báo thành công tới %s", toEmail)
+				}
+			}(user.Email, user.FullName, user.Phone, ipAddress, location, parseDeviceName(userAgent), time.Now())
+		} else {
+			log.Printf("⚠️ Người dùng %s không có email để gửi cảnh báo đăng nhập", user.Phone)
+		}
+
+		// 3. Chưa cho vào luôn, yêu cầu đăng nhập lại lần 2
+		return nil, errors.New("Phát hiện tài khoản đang đăng nhập trên thiết bị khác. Đã ngắt kết nối thiết bị cũ, vui lòng đăng nhập lại để tiếp tục.")
+	}
+
+	// Gửi email thông báo nếu đăng nhập thành công từ thiết bị mới/chưa tin cậy
+	if s.emailClient != nil && strings.TrimSpace(user.Email) != "" && !isTrusted {
+		log.Printf("📧 Gửi email thông báo thiết bị mới đăng nhập thành công tới: %s", user.Email)
 		go func(toEmail, name, phone, ip, loc, dev string, t time.Time) {
 			_ = s.emailClient.SendLoginAlertEmail(toEmail, email.LoginAlertData{
 				FullName:   name,
@@ -715,7 +787,6 @@ func (s *Service) ConfirmLogin(req ConfirmLoginRequest, userAgent string, ipAddr
 	}
 
 	// Chế độ 1 thiết bị duy nhất (Single Device Policy):
-	// Thu hồi toàn bộ Refresh Token cũ & Tăng SessionVersion để đá văng ngay lập tức thiết bị cũ đang trong app
 	_ = s.repo.RevokeAllUserRefreshTokens(user.ID)
 	_ = s.repo.IncreaseSessionVersion(user.ID)
 	user, err = s.repo.FindUserByID(user.ID)
