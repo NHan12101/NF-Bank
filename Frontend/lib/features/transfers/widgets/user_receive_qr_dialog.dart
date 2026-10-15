@@ -370,14 +370,14 @@ class _UserReceiveQRDialogState extends State<UserReceiveQRDialog> {
                                       color: Color(0xFF1E2841),
                                     ),
                                   ),
-                                  // Logo Ngân hàng NF-Bank ở tâm QR giống TPBank
+                                  // Logo Ngân hàng NF-Bank ở tâm QR hình tròn giống TPBank
                                   Container(
                                     width: 44,
                                     height: 44,
-                                    padding: const EdgeInsets.all(4),
+                                    padding: const EdgeInsets.all(5),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
-                                      borderRadius: BorderRadius.circular(10),
+                                      shape: BoxShape.circle,
                                       border: Border.all(
                                         color: const Color(0xFF562875).withValues(alpha: 0.18),
                                         width: 1.5,
@@ -390,8 +390,7 @@ class _UserReceiveQRDialogState extends State<UserReceiveQRDialog> {
                                         ),
                                       ],
                                     ),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(6),
+                                    child: ClipOval(
                                       child: Image.asset(
                                         'assets/images/logo_transparent.png',
                                         fit: BoxFit.contain,
@@ -416,7 +415,7 @@ class _UserReceiveQRDialogState extends State<UserReceiveQRDialog> {
                                         padding: const EdgeInsets.all(4),
                                         decoration: BoxDecoration(
                                           color: Colors.white,
-                                          borderRadius: BorderRadius.circular(10),
+                                          shape: BoxShape.circle,
                                           border: Border.all(
                                             color: const Color(0xFF562875).withValues(alpha: 0.18),
                                             width: 1.5,
@@ -429,8 +428,7 @@ class _UserReceiveQRDialogState extends State<UserReceiveQRDialog> {
                                             ),
                                           ],
                                         ),
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(6),
+                                        child: ClipOval(
                                           child: Image.asset(
                                             'assets/images/logo_transparent.png',
                                             fit: BoxFit.contain,

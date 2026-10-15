@@ -315,7 +315,7 @@ class _MyQRPageState extends State<MyQRPage> {
                                     padding: const EdgeInsets.all(4),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
-                                      borderRadius: BorderRadius.circular(10),
+                                      shape: BoxShape.circle,
                                       border: Border.all(
                                         color: const Color(0xFF562875).withValues(alpha: 0.18),
                                         width: 1.5,
@@ -328,8 +328,7 @@ class _MyQRPageState extends State<MyQRPage> {
                                         ),
                                       ],
                                     ),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(6),
+                                    child: ClipOval(
                                       child: Image.asset(
                                         'assets/images/logo_transparent.png',
                                         fit: BoxFit.contain,
@@ -364,7 +363,7 @@ class _MyQRPageState extends State<MyQRPage> {
                                         padding: const EdgeInsets.all(4),
                                         decoration: BoxDecoration(
                                           color: Colors.white,
-                                          borderRadius: BorderRadius.circular(10),
+                                          shape: BoxShape.circle,
                                           border: Border.all(
                                             color: const Color(0xFF562875).withValues(alpha: 0.18),
                                             width: 1.5,
@@ -377,8 +376,7 @@ class _MyQRPageState extends State<MyQRPage> {
                                             ),
                                           ],
                                         ),
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(6),
+                                        child: ClipOval(
                                           child: Image.asset(
                                             'assets/images/logo_transparent.png',
                                             fit: BoxFit.contain,
