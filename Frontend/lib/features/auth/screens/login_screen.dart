@@ -1240,42 +1240,6 @@ import 'dart:ui' as ui;
                        ),
                      ),
 
-                   // --- BOTTOM WAVY FOOTER (GD tại quầy, Chuyển tiền, Tỷ giá, Trợ giúp) ---
-                   Container(
-                     width: double.infinity,
-                     padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                     decoration: BoxDecoration(
-                       color: const Color(0xFF562875).withOpacity(0.7),
-                       borderRadius: (_lastUserName == null || _lastUserName!.isEmpty || _isSwitchingAccount)
-                           ? const BorderRadius.vertical(top: Radius.circular(24))
-                           : BorderRadius.zero,
-                     ),
-                     child: Row(
-                       mainAxisAlignment: MainAxisAlignment.spaceAround,
-                       children: [
-                          _buildFooterAction(
-                            icon: Icons.location_on_rounded,
-                            label: isEn ? 'Branches' : 'GD tại quầy',
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => BankingLocation())),
-                          ),
-                          _buildFooterAction(
-                            icon: Icons.swap_horiz_rounded,
-                            label: isEn ? 'Transfer' : 'Chuyển Tiền',
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen())),
-                          ),
-                          _buildFooterAction(
-                            icon: Icons.currency_exchange_rounded,
-                            label: isEn ? 'Rates' : 'Tỷ giá',
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BankingRateInfo())),
-                          ),
-                          _buildFooterAction(
-                            icon: Icons.support_agent_rounded,
-                            label: isEn ? 'Help' : 'Trợ giúp',
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BankingContact())),
-                          ),
-                       ],
-                     ),
-                   ),
                  ],
                ),
              ),
@@ -1286,35 +1250,6 @@ import 'dart:ui' as ui;
    }
  
  
- 
-   Widget _buildFooterAction({
-     required IconData icon,
-     required String label,
-     required VoidCallback onTap,
-   }) {
-     return InkWell(
-       onTap: onTap,
-       borderRadius: BorderRadius.circular(12),
-       child: Padding(
-         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-         child: Column(
-           mainAxisSize: MainAxisSize.min,
-           children: [
-             Icon(icon, color: Colors.white.withOpacity(0.9), size: 20),
-             const SizedBox(height: 4),
-             Text(
-               label,
-               style: TextStyle(
-                 fontSize: 11,
-                 color: Colors.white.withOpacity(0.85),
-                 fontWeight: FontWeight.w500,
-               ),
-             ),
-           ],
-         ),
-       ),
-     );
-   }
  
    Widget _progressOr(String label) => _loading
        ? const SizedBox.square(
