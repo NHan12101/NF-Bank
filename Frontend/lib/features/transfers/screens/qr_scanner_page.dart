@@ -7,7 +7,6 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../utils/vietqr_parser.dart';
 import 'merchant_checkout_page.dart';
-import 'my_qr_page.dart';
 import 'transfer_page.dart';
 
 class QRScannerPage extends StatefulWidget {
@@ -290,7 +289,7 @@ class _QRScannerPageState extends State<QRScannerPage> {
                             ),
                             children: const [
                               TextSpan(
-                                text: 'Quét mã QR để thực hiện thanh toán, rút tiền mặt,\nchuyển tiền song phương, hoặc ',
+                                text: 'Quét mã QR để thực hiện thanh toán, \nchuyển tiền song phương, hoặc ',
                               ),
                               TextSpan(
                                 text: 'napas',
@@ -358,51 +357,7 @@ class _QRScannerPageState extends State<QRScannerPage> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 14),
-
-                      // --- Nút hành động đáy "Tạo QR nhận tiền" ---
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: OutlinedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const MyQRPage()),
-                            );
-                          },
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(50),
-                            side: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.35),
-                              width: 1.2,
-                            ),
-                            backgroundColor: Colors.black.withValues(alpha: 0.25),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(28),
-                            ),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.qr_code_2_rounded,
-                                color: Colors.white,
-                                size: 22,
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                'Tạo QR nhận tiền',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 24),
                     ],
                   ),
                 ),
