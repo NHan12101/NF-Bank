@@ -106,22 +106,10 @@ class BankingHome1State extends State<BankingHome1> {
   }
 
   void _openSavings() {
-    final isEn = LanguageController.instance.isEnglish;
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(
-            backgroundColor: const Color(0xFF562875),
-            foregroundColor: Colors.white,
-            iconTheme: const IconThemeData(color: Colors.white),
-            title: Text(
-              isEn ? 'Online Savings' : 'Tiết kiệm trực tuyến',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          ),
-          body: const SavingsPage(),
-        ),
+        builder: (_) => const SavingsPage(),
       ),
     );
   }
