@@ -12,6 +12,7 @@ import '../utils/BankingContants.dart';
 import '../utils/BankingImages.dart';
 import '../../banking/screens/user_pages.dart';
 import '../../auth/screens/login_screen.dart';
+import '../../transfers/widgets/user_receive_qr_dialog.dart';
 
 class BankingHome1 extends StatefulWidget {
   static String tag = '/BankingHome1';
@@ -95,52 +96,10 @@ class BankingHome1State extends State<BankingHome1> {
   }
 
   void _showQRModal() {
-    final userName = _user?.fullName ?? 'NF BANK USER';
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: ThemeController.instance.isDarkMode ? const Color(0xFF1F0D33) : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[400], borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 16),
-            const Text(
-              'MÃ QR NHẬN TIỀN TPBANK',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF562875)),
-            ),
-            const SizedBox(height: 16),
-            Image.asset('assets/images/logo_transparent.png', height: 70),
-            const SizedBox(height: 8),
-            Text(userName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            Text('STK: $_accountNumber', style: TextStyle(color: Colors.grey[600], fontSize: 14)),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)]),
-              child: Icon(Icons.qr_code_2_rounded, size: 200, color: const Color(0xFF562875)),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.close),
-              label: const Text('Đóng'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF7941D),
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 48),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-            ),
-          ],
-        ),
-      ),
+    UserReceiveQRDialog.show(
+      context,
+      userName: _user?.fullName,
+      userAccount: _accountNumber != '...' ? _accountNumber : null,
     );
   }
 

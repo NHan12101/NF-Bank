@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:gal/gal.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../core/services/bank_repository.dart';
 import '../../../core/storage/token_storage.dart';
@@ -289,26 +290,106 @@ class _MyQRPageState extends State<MyQRPage> {
                         padding: const EdgeInsets.all(12),
                         width: 240,
                         height: 240,
-                        child: _qrUrl.isNotEmpty
-                            ? Image.network(
-                                _qrUrl,
-                                loadingBuilder: (context, child, loadingProgress) {
-                                  if (loadingProgress == null) return child;
-                                  return const Center(
-                                    child: CircularProgressIndicator(strokeWidth: 3),
-                                  );
-                                },
-                                errorBuilder: (_, __, ___) => const Center(
-                                  child: Icon(
-                                    Icons.qr_code_rounded,
-                                    size: 80,
-                                    color: Colors.grey,
+                        child: _qrData.isNotEmpty
+                            ? Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  QrImageView(
+                                    data: _qrData,
+                                    version: QrVersions.auto,
+                                    size: 216.0,
+                                    padding: EdgeInsets.zero,
+                                    errorCorrectionLevel: QrErrorCorrectLevel.H,
+                                    eyeStyle: const QrEyeStyle(
+                                      eyeShape: QrEyeShape.square,
+                                      color: Color(0xFF1E2841),
+                                    ),
+                                    dataModuleStyle: const QrDataModuleStyle(
+                                      dataModuleShape: QrDataModuleShape.square,
+                                      color: Color(0xFF1E2841),
+                                    ),
                                   ),
-                                ),
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: const Color(0xFF562875).withValues(alpha: 0.18),
+                                        width: 1.5,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.15),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: Image.asset(
+                                        'assets/images/logo_transparent.png',
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               )
-                            : const Center(
-                                child: CircularProgressIndicator(),
-                              ),
+                            : _qrUrl.isNotEmpty
+                                ? Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      Image.network(
+                                        _qrUrl,
+                                        loadingBuilder: (context, child, loadingProgress) {
+                                          if (loadingProgress == null) return child;
+                                          return const Center(
+                                            child: CircularProgressIndicator(strokeWidth: 3),
+                                          );
+                                        },
+                                        errorBuilder: (_, __, ___) => const Center(
+                                          child: Icon(
+                                            Icons.qr_code_rounded,
+                                            size: 80,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        width: 44,
+                                        height: 44,
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(
+                                            color: const Color(0xFF562875).withValues(alpha: 0.18),
+                                            width: 1.5,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.15),
+                                              blurRadius: 6,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(6),
+                                          child: Image.asset(
+                                            'assets/images/logo_transparent.png',
+                                            fit: BoxFit.contain,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : const Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
                       ),
                     ),
                     const SizedBox(height: 20),

@@ -21,6 +21,7 @@ import 'dart:ui' as ui;
  import 'register_screen.dart';
  
  import '../../transfers/screens/qr_scanner_page.dart';
+ import '../../transfers/widgets/user_receive_qr_dialog.dart';
  import '../../banking/screens/user_pages.dart' show NotificationsPage;
  import '../../banking_ui_kit/screen/BankingLocation.dart';
  import '../../banking_ui_kit/screen/BankingRateInfo.dart';
@@ -76,6 +77,7 @@ import 'dart:ui' as ui;
    String? _lastUserPhone;
    String? _lastUserAccount;
    String? _lastUserQrUrl;
+   String? _lastUserQrData;
    bool _loading = false;
    bool _passwordHidden = true;
    bool _biometricLoginEnabled = false;
@@ -173,6 +175,7 @@ import 'dart:ui' as ui;
          _lastUserPhone = phone;
          _lastUserAccount = (account != null && account.startsWith('9704')) ? account : null;
          _lastUserQrUrl = qrUrl;
+        _lastUserQrData = qrData;
          if (phone != null && phone.isNotEmpty) {
            _phone.text = phone;
          }
@@ -434,14 +437,12 @@ import 'dart:ui' as ui;
        return;
      }
  
-     showDialog<void>(
-       context: context,
-       barrierDismissible: true,
-       builder: (dialogContext) => _UserReceiveQRModal(
-         userName: name,
-         userAccount: account,
-         qrUrl: qrUrl,
-       ),
+     UserReceiveQRDialog.show(
+       context,
+       userName: name,
+       userAccount: account,
+       qrData: _lastUserQrData,
+       qrUrl: qrUrl,
      );
    }
  
@@ -1442,106 +1443,6 @@ import 'dart:ui' as ui;
    }
  
    
- }
- 
- class _UserReceiveQRModal extends StatefulWidget {
-   const _UserReceiveQRModal({
-     required this.userName,
-     required this.userAccount,
-     required this.qrUrl,
-   });
- 
-   final String userName;
-   final String userAccount;
-   final String qrUrl;
- 
-   @override
-   State<_UserReceiveQRModal> createState() => _UserReceiveQRModalState();
- }
- 
- class _UserReceiveQRModalState extends State<_UserReceiveQRModal> {
-   final GlobalKey _repaintKey = GlobalKey();
-   bool _saving = false;
- 
-   Future<void> _saveQRImage() async {
-     if (_saving) return;
-     setState(() => _saving = true);
-     try {
-       await Future<void>.delayed(const Duration(milliseconds: 60));
-       final boundary = _repaintKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-       if (boundary == null) throw StateError('Không tìm thấy vùng QR');
-       final image = await boundary.toImage(pixelRatio: 2.5);
-       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-       image.dispose();
-       if (byteData == null) throw StateError('Không thể tạo ảnh QR');
- 
-       var hasAccess = await Gal.hasAccess();
-       if (!hasAccess) hasAccess = await Gal.requestAccess();
-       if (!hasAccess) throw StateError('Chưa cấp quyền lưu ảnh');
- 
-       await Gal.putImageBytes(
-         byteData.buffer.asUint8List(),
-         name: 'TPBank_Receive_QR_${DateTime.now().millisecondsSinceEpoch}',
-       );
-       if (mounted) showMessage(context, 'Đã lưu ảnh QR nhận tiền vào bộ sưu tập');
-     } catch (e) {
-       if (mounted) showMessage(context, 'Không thể lưu ảnh QR', error: true);
-     } finally {
-       if (mounted) setState(() => _saving = false);
-     }
-   }
- 
-   @override
-   Widget build(BuildContext context) {
-     return Dialog(
-       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-       child: Padding(
-         padding: const EdgeInsets.all(20),
-         child: Column(
-           mainAxisSize: MainAxisSize.min,
-           children: [
-             Row(
-               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-               children: [
-                 const Text('Mã QR nhận tiền', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF562875))),
-                 IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-               ],
-             ),
-             const SizedBox(height: 12),
-             RepaintBoundary(
-               key: _repaintKey,
-               child: Container(
-                 padding: const EdgeInsets.all(16),
-                 decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)]),
-                 child: Column(
-                   children: [
-                     Image.asset('assets/images/logo_transparent.png', height: 60),
-                     const SizedBox(height: 8),
-                     Text(widget.userName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                     Text('STK: ${widget.userAccount}', style: const TextStyle(color: Colors.grey, fontSize: 13)),
-                     const SizedBox(height: 14),
-                     Image.network(widget.qrUrl, height: 200, width: 200, fit: BoxFit.contain),
-                   ],
-                 ),
-               ),
-             ),
-             const SizedBox(height: 18),
-             ElevatedButton.icon(
-               onPressed: _saving ? null : _saveQRImage,
-               icon: const Icon(Icons.download_rounded),
-               label: Text(_saving ? 'Đang lưu...' : 'Tải ảnh QR'),
-               style: ElevatedButton.styleFrom(
-                 backgroundColor: const Color(0xFFF7941D),
-                 foregroundColor: Colors.white,
-                 minimumSize: const Size(double.infinity, 48),
-                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-               ),
-             ),
-           ],
-         ),
-       ),
-     );
-   }
  }
  
  class _ResetPasswordDialog extends StatefulWidget {
