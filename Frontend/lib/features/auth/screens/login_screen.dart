@@ -498,24 +498,17 @@ import 'dart:ui' as ui;
      if (token != null && token.isNotEmpty) {
        await Navigator.push(
          context,
-         MaterialPageRoute(
-           builder: (_) => Scaffold(
-             appBar: AppBar(
-               backgroundColor: const Color(0xFF562875),
-               iconTheme: const IconThemeData(color: Colors.white),
-               title: Text(isEn ? 'Notifications' : 'Thông báo', style: const TextStyle(color: Colors.white)),
-             ),
-             body: NotificationsPage(
-               onUnreadCountChanged: (count) {
-                 if (mounted) {
-                   setState(() {
-                     _unreadNotificationCount = count;
-                   });
-                 }
-               },
-             ),
-           ),
-         ),
+          MaterialPageRoute(
+            builder: (_) => NotificationsPage(
+              onUnreadCountChanged: (count) {
+                if (mounted) {
+                  setState(() {
+                    _unreadNotificationCount = count;
+                  });
+                }
+              },
+            ),
+          ),
        );
        _fetchUnreadNotificationCount();
      }

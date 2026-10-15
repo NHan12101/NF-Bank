@@ -141,21 +141,10 @@ class BankingHome1State extends State<BankingHome1> {
   }
 
   void _openNotifications() {
-    final isEn = LanguageController.instance.isEnglish;
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(
-            backgroundColor: const Color(0xFF562875),
-            iconTheme: const IconThemeData(color: Colors.white),
-            title: Text(
-              isEn ? 'Notifications' : 'Thông báo',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          ),
-          body: const NotificationsPage(),
-        ),
+        builder: (context) => const NotificationsPage(),
       ),
     );
   }
@@ -251,21 +240,7 @@ class BankingHome1State extends State<BankingHome1> {
                               icon: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFFF7941D), size: 28),
                             ),
                             IconButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => Scaffold(
-                                      appBar: AppBar(
-                                        backgroundColor: const Color(0xFF562875),
-                                        iconTheme: const IconThemeData(color: Colors.white),
-                                        title: Text(isEn ? 'Notifications' : 'Thông báo', style: const TextStyle(color: Colors.white)),
-                                      ),
-                                      body: const NotificationsPage(),
-                                    ),
-                                  ),
-                                );
-                              },
+                              onPressed: _openNotifications,
                               tooltip: isEn ? 'Notifications' : 'Thông báo',
                               icon: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 26),
                             ),
