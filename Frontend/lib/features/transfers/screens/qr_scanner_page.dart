@@ -277,43 +277,37 @@ class _QRScannerPageState extends State<QRScannerPage> {
                         ),
                       ),
 
-                      // --- Thông tin giới thiệu & Hỗ trợ chuẩn QR ---
+                      // --- Thông tin giới thiệu ---
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
-                        child: Column(
-                          children: [
-                            RichText(
-                              textAlign: TextAlign.center,
-                              text: TextSpan(
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.88),
-                                  fontSize: 12.5,
-                                  height: 1.4,
-                                ),
-                                children: const [
-                                  TextSpan(
-                                    text: 'Quét mã QR để thực hiện thanh toán, rút tiền mặt,\nchuyển tiền song phương, hoặc ',
-                                  ),
-                                  TextSpan(
-                                    text: 'napas',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: '247',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w900,
-                                      color: Color(0xFF00D287),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                        child: RichText(
+                          textAlign: TextAlign.center,
+                          text: TextSpan(
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.88),
+                              fontSize: 12.5,
+                              height: 1.4,
                             ),
-                            const SizedBox(height: 10),
-                            _buildPartnerBadges(),
-                          ],
+                            children: const [
+                              TextSpan(
+                                text: 'Quét mã QR để thực hiện thanh toán, rút tiền mặt,\nchuyển tiền song phương, hoặc ',
+                              ),
+                              TextSpan(
+                                text: 'napas',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                              TextSpan(
+                                text: '247',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF00D287),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
 
@@ -503,94 +497,6 @@ class _QRScannerPageState extends State<QRScannerPage> {
             ],
           );
         },
-      ),
-    );
-  }
-
-  // Khối logo các đối tác ngân hàng & chuẩn thanh toán tương tự ảnh mẫu
-  Widget _buildPartnerBadges() {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'BIDV',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 13,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-                SizedBox(width: 3),
-                Icon(Icons.spa_rounded, size: 13, color: Color(0xFF00B074)),
-              ],
-            ),
-            _divider(),
-            const Text(
-              'VIETQR',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-                fontSize: 12.5,
-                letterSpacing: 0.5,
-              ),
-            ),
-            _divider(),
-            const Text(
-              'VNPAYQR',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-                fontSize: 12.5,
-                letterSpacing: 0.4,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 3),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'VIETQR Global',
-              style: TextStyle(
-                color: Colors.white70,
-                fontWeight: FontWeight.w700,
-                fontSize: 10.5,
-                letterSpacing: 0.2,
-              ),
-            ),
-            _divider(),
-            const Text(
-              'VIETQR Pay',
-              style: TextStyle(
-                color: Colors.white70,
-                fontWeight: FontWeight.w700,
-                fontSize: 10.5,
-                letterSpacing: 0.2,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _divider() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      child: Text(
-        '|',
-        style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.35),
-          fontSize: 11,
-          fontWeight: FontWeight.w300,
-        ),
       ),
     );
   }
