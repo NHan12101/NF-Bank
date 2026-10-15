@@ -24,6 +24,7 @@ class ApiUrl {
   static String get sendEmailOTP => '$auth/send-email-otp';
   static String get verifyEmailOTP => '$auth/verify-email-otp';
   static String get resetPasswordEmail => '$auth/reset-password-email';
+  static String get sessionCheck => '$auth/session-check';
 
   static String get accounts => '$baseUrl/accounts';
   static String get profile => '$baseUrl/users/me';

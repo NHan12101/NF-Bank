@@ -56,8 +56,8 @@ func (s *Service) SetupTransactionPIN(userID uint, req SetupTransactionPINReques
 }
 
 func (s *Service) VerifyTransactionPIN(userID uint, rawPIN string, isNewDevice bool) error {
-	if !regexp.MustCompile(`^[0-9]{4,6}$`).MatchString(rawPIN) {
-		return errors.New("Mã PIN giao dịch phải gồm từ 4 đến 6 chữ số")
+	if !regexp.MustCompile(`^(?:[0-9]{4}|[0-9]{6})$`).MatchString(rawPIN) {
+		return errors.New("Mã PIN giao dịch phải gồm 4 hoặc 6 chữ số")
 	}
 
 	var user auth.User
@@ -120,8 +120,8 @@ func (s *Service) VerifyTransactionPIN(userID uint, rawPIN string, isNewDevice b
 }
 
 func validateTransactionPIN(pin string) error {
-	if !regexp.MustCompile(`^[0-9]{4,6}$`).MatchString(pin) {
-		return errors.New("Mã PIN phải gồm đúng 6 chữ số")
+	if !regexp.MustCompile(`^(?:[0-9]{4}|[0-9]{6})$`).MatchString(pin) {
+		return errors.New("Mã PIN phải gồm 4 hoặc 6 chữ số")
 	}
 
 	weakPINs := map[string]struct{}{

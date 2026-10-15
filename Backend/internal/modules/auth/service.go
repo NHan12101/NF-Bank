@@ -141,7 +141,7 @@ func (s *Service) Register(req RegisterRequest) error {
 		IsVerified:   true,
 		IsLocked:     false,
 	}
-	return s.repo.WithTx(func(tx *gorm.DB) error {
+	err = s.repo.WithTx(func(tx *gorm.DB) error {
 		if err := s.repo.withDB(tx).CreateUser(user); err != nil {
 			return err
 		}
@@ -249,6 +249,14 @@ func (s *Service) Login(req LoginRequest, userAgent string, ipAddress string, de
 			return nil, err
 		}
 
+		// Chế độ 1 thiết bị duy nhất (Single Device Policy): Vô hiệu hóa phiên cũ
+		_ = s.repo.RevokeAllUserRefreshTokens(user.ID)
+		_ = s.repo.IncreaseSessionVersion(user.ID)
+		user, err = s.repo.FindUserByID(user.ID)
+		if err != nil || user == nil {
+			return nil, errors.New("Không thể cập nhật phiên đăng nhập")
+		}
+
 		// Tạo Access Token và Refresh Token ngay lập tức cho Admin/Super Admin
 		accessToken, err := jwtProvider.GenerateAccessToken(
 			user.ID,
@@ -323,8 +331,8 @@ func (s *Service) Login(req LoginRequest, userAgent string, ipAddress string, de
 			deviceID = generateUUID()
 		}
 
+		location := resolveLocation(ipAddress)
 		if !isTrusted {
-			location := resolveLocation(ipAddress)
 			device := &UserDevice{
 				UserID:         user.ID,
 				DeviceID:       deviceID,
@@ -336,9 +344,28 @@ func (s *Service) Login(req LoginRequest, userAgent string, ipAddress string, de
 			_ = s.repo.CreateUserDevice(device)
 		}
 
-		activeSessions, err := s.repo.GetActiveSessions(user.ID)
-		if err == nil && len(activeSessions) >= 3 {
-			_ = s.repo.RevokeRefreshTokenByID(activeSessions[0].ID)
+		// Gửi email cảnh báo nếu đăng nhập từ thiết bị mới/chưa tin cậy
+		if s.emailClient != nil && strings.TrimSpace(user.Email) != "" && !isTrusted {
+			go func(toEmail, name, phone, ip, loc, dev string, t time.Time) {
+				_ = s.emailClient.SendLoginAlertEmail(toEmail, email.LoginAlertData{
+					FullName:   name,
+					Phone:      phone,
+					Email:      toEmail,
+					LoginTime:  t,
+					IPAddress:  ip,
+					Location:   loc,
+					DeviceName: dev,
+				})
+			}(user.Email, user.FullName, user.Phone, ipAddress, location, parseDeviceName(userAgent), time.Now())
+		}
+
+		// Chế độ 1 thiết bị duy nhất (Single Device Policy):
+		// Vô hiệu hóa toàn bộ Refresh Token cũ & Tăng SessionVersion để đá văng thiết bị cũ
+		_ = s.repo.RevokeAllUserRefreshTokens(user.ID)
+		_ = s.repo.IncreaseSessionVersion(user.ID)
+		user, err = s.repo.FindUserByID(user.ID)
+		if err != nil || user == nil {
+			return nil, errors.New("Không thể cập nhật phiên đăng nhập")
 		}
 
 		accessToken, err := jwtProvider.GenerateAccessToken(
@@ -672,12 +699,28 @@ func (s *Service) ConfirmLogin(req ConfirmLoginRequest, userAgent string, ipAddr
 		deviceID = newDeviceID
 	}
 
-	// 5. Nếu là thiết bị quen -> Cho phép đăng nhập bình thường
-	// Kiểm tra giới hạn tối đa 3 thiết bị đồng thời
-	activeSessions, err := s.repo.GetActiveSessions(user.ID)
-	if err == nil && len(activeSessions) >= 3 {
-		// Vô hiệu hóa session cũ nhất
-		_ = s.repo.RevokeRefreshTokenByID(activeSessions[0].ID)
+	// Gửi email cảnh báo thiết bị lạ/thiết bị mới đăng nhập nếu người dùng có Email
+	if s.emailClient != nil && strings.TrimSpace(user.Email) != "" {
+		go func(toEmail, name, phone, ip, loc, dev string, t time.Time) {
+			_ = s.emailClient.SendLoginAlertEmail(toEmail, email.LoginAlertData{
+				FullName:   name,
+				Phone:      phone,
+				Email:      toEmail,
+				LoginTime:  t,
+				IPAddress:  ip,
+				Location:   loc,
+				DeviceName: dev,
+			})
+		}(user.Email, user.FullName, user.Phone, ipAddress, location, parseDeviceName(userAgent), time.Now())
+	}
+
+	// Chế độ 1 thiết bị duy nhất (Single Device Policy):
+	// Thu hồi toàn bộ Refresh Token cũ & Tăng SessionVersion để đá văng ngay lập tức thiết bị cũ đang trong app
+	_ = s.repo.RevokeAllUserRefreshTokens(user.ID)
+	_ = s.repo.IncreaseSessionVersion(user.ID)
+	user, err = s.repo.FindUserByID(user.ID)
+	if err != nil || user == nil {
+		return nil, errors.New("Không thể cập nhật phiên đăng nhập")
 	}
 
 	accessToken, err := jwtProvider.GenerateAccessToken(
@@ -775,6 +818,32 @@ func resolveLocation(ip string) string {
 	}
 
 	return fmt.Sprintf("%s, %s (%s)", geo.City, geo.Country, geo.ISP)
+}
+
+func parseDeviceName(userAgent string) string {
+	ua := strings.ToLower(userAgent)
+	if strings.Contains(ua, "android") {
+		return "Thiết bị Android (NFBank App)"
+	} else if strings.Contains(ua, "iphone") || strings.Contains(ua, "ipad") || strings.Contains(ua, "ios") {
+		return "Thiết bị Apple iOS (NFBank App)"
+	} else if strings.Contains(ua, "dart") {
+		return "Ứng dụng Di động NFBank"
+	} else if strings.Contains(ua, "windows") {
+		return "Máy tính Windows"
+	} else if strings.Contains(ua, "macintosh") || strings.Contains(ua, "mac os") {
+		return "Máy tính macOS"
+	} else if strings.Contains(ua, "chrome") {
+		return "Trình duyệt Chrome"
+	} else if strings.Contains(ua, "safari") {
+		return "Trình duyệt Safari"
+	}
+	if userAgent == "" {
+		return "Thiết bị di động"
+	}
+	if len(userAgent) > 40 {
+		return userAgent[:40] + "..."
+	}
+	return userAgent
 }
 
 func generateUUID() string {

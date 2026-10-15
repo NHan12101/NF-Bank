@@ -7,6 +7,7 @@ import 'BankingMenu.dart';
 import 'BankingPayment.dart';
 import '../../transfers/screens/transfer_page.dart';
 import '../../transfers/screens/qr_scanner_page.dart';
+import '../../../core/services/session_heartbeat_service.dart';
 
 class BankingDashboard extends StatefulWidget {
   static var tag = "/BankingDashboard";
@@ -24,6 +25,7 @@ class _BankingDashboardState extends State<BankingDashboard> {
   @override
   void initState() {
     super.initState();
+    SessionHeartbeatService.start();
     selectedIndex = 0;
     pages = [
       BankingHome1(onSelectTab: _onItemTapped),
@@ -32,6 +34,12 @@ class _BankingDashboardState extends State<BankingDashboard> {
       const TransferPage(),
       const BankingMenu(),
     ];
+  }
+
+  @override
+  void dispose() {
+    SessionHeartbeatService.stop();
+    super.dispose();
   }
 
   void _onItemTapped(int index) {

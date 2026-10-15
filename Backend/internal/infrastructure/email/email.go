@@ -405,3 +405,135 @@ func generateReceiptEmailHTML(data ReceiptData) string {
 	})
 	return buf.String()
 }
+
+// LoginAlertData chứa thông tin cảnh báo khi phát hiện thiết bị lạ đăng nhập
+type LoginAlertData struct {
+	FullName   string
+	Phone      string
+	Email      string
+	LoginTime  time.Time
+	IPAddress  string
+	Location   string
+	DeviceName string
+}
+
+// SendLoginAlertEmail gửi Email cảnh báo bảo mật khi có thiết bị lạ/thiết bị mới đăng nhập
+func (c *Client) SendLoginAlertEmail(toEmail string, data LoginAlertData) error {
+	subject := "⚠️ [NFBank] Cảnh báo bảo mật: Phát hiện đăng nhập trên thiết bị mới"
+	html := generateLoginAlertEmailHTML(data)
+	return c.SendRawEmail(toEmail, subject, html)
+}
+
+func generateLoginAlertEmailHTML(data LoginAlertData) string {
+	const tmpl = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Cảnh báo đăng nhập mới - NFBank</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f1f5f9; padding: 30px 0;">
+        <tr>
+            <td align="center">
+                <table width="560" cellpadding="0" cellspacing="0" style="background: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.08);">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%); padding: 30px 32px; text-align: center;">
+                            <div style="background: rgba(255,255,255,0.2); width: 52px; height: 52px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 8px;">
+                                <span style="color: #ffffff; font-size: 26px;">🛡️</span>
+                            </div>
+                            <h2 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 0.5px;">CẢNH BÁO BẢO MẬT TÀI KHOẢN</h2>
+                            <p style="color: #fca5a5; margin: 6px 0 0 0; font-size: 13.5px; font-weight: 500;">Phát hiện lượt đăng nhập trên thiết bị mới</p>
+                        </td>
+                    </tr>
+
+                    <!-- Body Content -->
+                    <tr>
+                        <td style="padding: 32px;">
+                            <h3 style="color: #1e293b; margin: 0 0 14px 0; font-size: 16px;">Kính gửi Quý khách {{.FullName}},</h3>
+                            <p style="color: #475569; margin: 0 0 20px 0; font-size: 14px; line-height: 1.6;">
+                                Hệ thống ngân hàng số <strong>NFBank</strong> ghi nhận tài khoản của Quý khách vừa thực hiện đăng nhập thành công từ một thiết bị mới.
+                            </p>
+
+                            <!-- Single Device Alert Box -->
+                            <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 14px 16px; border-radius: 8px; margin-bottom: 24px;">
+                                <p style="color: #92400e; margin: 0; font-size: 13.5px; font-weight: 600; line-height: 1.5;">
+                                    🔒 <strong>Chính sách 1 thiết bị duy nhất:</strong> Nhằm đảm bảo an toàn tối đa cho tiền và tài khoản của Quý khách, phiên đăng nhập trên thiết bị trước đó đã tự động đăng xuất.
+                                </p>
+                            </div>
+
+                            <!-- Device Details Table -->
+                            <table width="100%" cellpadding="12" cellspacing="0" style="background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 24px;">
+                                <tr>
+                                    <td style="color: #64748b; font-size: 13px; border-bottom: 1px solid #e2e8f0;">Thời gian đăng nhập:</td>
+                                    <td style="color: #1e293b; font-weight: 700; font-size: 13.5px; border-bottom: 1px solid #e2e8f0;" align="right">{{.LoginTime}}</td>
+                                </tr>
+                                <tr>
+                                    <td style="color: #64748b; font-size: 13px; border-bottom: 1px solid #e2e8f0;">Thiết bị:</td>
+                                    <td style="color: #562875; font-weight: 700; font-size: 13.5px; border-bottom: 1px solid #e2e8f0;" align="right">{{.DeviceName}}</td>
+                                </tr>
+                                <tr>
+                                    <td style="color: #64748b; font-size: 13px; border-bottom: 1px solid #e2e8f0;">Địa chỉ IP:</td>
+                                    <td style="color: #1e293b; font-weight: 600; font-size: 13.5px; font-family: monospace; border-bottom: 1px solid #e2e8f0;" align="right">{{.IPAddress}}</td>
+                                </tr>
+                                <tr>
+                                    <td style="color: #64748b; font-size: 13px; border-bottom: 1px solid #e2e8f0;">Vị trí ước tính:</td>
+                                    <td style="color: #1e293b; font-weight: 600; font-size: 13.5px; border-bottom: 1px solid #e2e8f0;" align="right">{{.Location}}</td>
+                                </tr>
+                                <tr>
+                                    <td style="color: #64748b; font-size: 13px;">Số điện thoại tài khoản:</td>
+                                    <td style="color: #1e293b; font-weight: 600; font-size: 13.5px;" align="right">{{.Phone}}</td>
+                                </tr>
+                            </table>
+
+                            <!-- Urgent Warning -->
+                            <div style="background-color: #fef2f2; border: 1px solid #fee2e2; border-radius: 12px; padding: 18px; margin-bottom: 24px;">
+                                <p style="color: #b91c1c; margin: 0 0 8px 0; font-size: 13.5px; font-weight: 700;">
+                                    ⚠️ Nếu Quý khách KHÔNG thực hiện đăng nhập này:
+                                </p>
+                                <p style="color: #7f1d1d; margin: 0; font-size: 13px; line-height: 1.5;">
+                                    Tài khoản hoặc mật khẩu của Quý khách có thể đã bị lộ. Vui lòng mở ngay ứng dụng NFBank để thực hiện <strong>Đổi mật khẩu</strong> hoặc liên hệ ngay hotline <strong>1900 1234</strong> để yêu cầu khóa tài khoản khẩn cấp.
+                                </p>
+                            </div>
+
+                            <p style="color: #64748b; margin: 0; font-size: 13px; line-height: 1.5;">
+                                Nếu chính Quý khách vừa đăng nhập trên thiết bị trên, Quý khách có thể hoàn toàn yên tâm và bỏ qua thông báo này.
+                            </p>
+
+                            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+                            <p style="color: #94a3b8; margin: 0; font-size: 12px; text-align: center;">
+                                Đây là thư điện tử gửi tự động nhằm bảo vệ an toàn tài khoản của Quý khách tại NFBank. Vui lòng không trả lời thư này.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+`
+	t, _ := template.New("login_alert").Parse(tmpl)
+	var buf bytes.Buffer
+
+	location := data.Location
+	if location == "" {
+		location = "Không xác định"
+	}
+
+	deviceName := data.DeviceName
+	if deviceName == "" {
+		deviceName = "Thiết bị di động"
+	}
+
+	_ = t.Execute(&buf, map[string]interface{}{
+		"FullName":   strings.ToUpper(data.FullName),
+		"Phone":      data.Phone,
+		"LoginTime":  data.LoginTime.Format("02/01/2006 15:04:05"),
+		"DeviceName": deviceName,
+		"IPAddress":  data.IPAddress,
+		"Location":   location,
+	})
+	return buf.String()
+}

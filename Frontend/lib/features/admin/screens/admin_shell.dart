@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/services/bank_repository.dart';
+import '../../../core/services/session_heartbeat_service.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../shared/widgets/common.dart';
 import '../../auth/screens/login_screen.dart';
@@ -56,6 +57,7 @@ class _AdminShellState extends State<AdminShell> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    SessionHeartbeatService.start();
     WidgetsBinding.instance.addObserver(this);
     _loadUnreadNotifications();
     PushNotificationService.instance.initialize(
@@ -71,6 +73,7 @@ class _AdminShellState extends State<AdminShell> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    SessionHeartbeatService.stop();
     WidgetsBinding.instance.removeObserver(this);
     _monitorNavigation.dispose();
     super.dispose();

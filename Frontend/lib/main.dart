@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'package:nb_utils/nb_utils.dart';
+
 import 'core/network/api_service.dart';
+import 'core/services/session_heartbeat_service.dart';
 import 'core/storage/token_storage.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/language_controller.dart';
@@ -16,6 +19,14 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   ApiService.onSessionExpired = () async {
+    SessionHeartbeatService.stop();
+
+    toast(
+      'Vui lòng đăng nhập lại để tiếp tục',
+      gravity: ToastGravity.BOTTOM,
+      length: Toast.LENGTH_LONG,
+    );
+
     final navigator = appNavigatorKey.currentState;
     if (navigator == null) return;
     navigator.pushAndRemoveUntil(

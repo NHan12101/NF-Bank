@@ -321,3 +321,10 @@ func (h *Handler) ResetPasswordWithEmail(c *gin.Context) {
 
 	response.Success(c, http.StatusOK, "Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại!", nil)
 }
+
+// CheckSession kiểm tra phiên đăng nhập hiện tại có còn hợp lệ hay không (phục vụ Heartbeat 1 thiết bị duy nhất)
+func (h *Handler) CheckSession(c *gin.Context) {
+	response.Success(c, http.StatusOK, "Phiên đăng nhập hợp lệ", gin.H{
+		"valid": true,
+	})
+}

@@ -21,6 +21,7 @@ func RegisterRoutes(r *gin.RouterGroup, handler *Handler) {
 	protectedAuth.Use(middleware.AuthMiddleware(handler.service.cfg))
 	{
 		protectedAuth.PUT("/change-password", handler.ChangePassword)
+		protectedAuth.GET("/session-check", handler.CheckSession)
 	}
 	authGroup.POST("/password-reset/confirm", handler.ResetPassword)
 	authGroup.POST("/send-email-otp", handler.SendEmailOTP)
