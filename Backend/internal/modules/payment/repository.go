@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type Repository struct {
@@ -58,18 +59,6 @@ func (r *Repository) FindSessionByID(id uint) (*PaymentSession, error) {
 	return &s, nil
 }
 
-func (r *Repository) FindMerchantByID(id uint) (*Merchant, error) {
-	var m Merchant
-	err := r.db.First(&m, id).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &m, nil
-}
-
 func (r *Repository) FindAccountByID(id uint) (*account.Account, error) {
 	var acc account.Account
 	err := r.db.First(&acc, id).Error
@@ -96,7 +85,7 @@ func (r *Repository) FindAccountByIDAndUserID(id, userID uint) (*account.Account
 
 func (r *Repository) FindAccountByIDForUpdate(tx *gorm.DB, id uint) (*account.Account, error) {
 	var acc account.Account
-	err := tx.Set("gorm:query_option", "FOR UPDATE").First(&acc, id).Error
+	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&acc, id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -129,6 +118,25 @@ func (r *Repository) GetUserPhone(userID uint) (string, error) {
 	return phone, err
 }
 
+func (r *Repository) FindAccountByNumber(accountNumber string) (*account.Account, error) {
+	var acc account.Account
+	err := r.db.Where("account_number = ?", accountNumber).First(&acc).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &acc, nil
+}
+
+func (r *Repository) GetUserFullName(userID uint) (string, error) {
+	var name string
+	err := r.db.Table("users").Select("full_name").Where("id = ?", userID).Row().Scan(&name)
+	return name, err
+}
+
 func (r *Repository) WithTx(fn func(tx *gorm.DB) error) error {
 	return r.db.Transaction(fn)
 }
+

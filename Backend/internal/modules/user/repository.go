@@ -11,19 +11,19 @@ type Repository struct {
 }
 
 type BasicUserInfo struct {
-	ID         uint
-	FullName   string
-	Email      string
-	Phone      string
-	Role       string
-	IsVerified bool
-	IsLocked   bool
+	FullName string
+	Phone    string
+	Role     string
 }
 
 func NewRepository(db *gorm.DB) *Repository {
 	return &Repository{
 		db: db,
 	}
+}
+
+func (r *Repository) withDB(db *gorm.DB) *Repository {
+	return &Repository{db: db}
 }
 
 func (r *Repository) CreateProfile(
@@ -62,11 +62,33 @@ func (r *Repository) UpdateProfile(
 		Model(&UserProfile{}).
 		Where("user_id = ?", userID).
 		Updates(map[string]interface{}{
-			"address":       profile.Address,
-			"avatar_url":    profile.AvatarURL,
-			"gender":        profile.Gender,
-			"date_of_birth": profile.DateOfBirth,
+			"address":              profile.Address,
+			"avatar_url":           profile.AvatarURL,
+			"gender":               profile.Gender,
+			"date_of_birth":        profile.DateOfBirth,
+			"daily_transfer_limit": profile.DailyTransferLimit,
 		}).Error
+}
+
+func (r *Repository) UpdateDailyTransferLimit(userID uint, limit int64) error {
+	return r.db.
+		Model(&UserProfile{}).
+		Where("user_id = ?", userID).
+		Update("daily_transfer_limit", limit).Error
+}
+
+func (r *Repository) UpdateAvatarURL(userID uint, avatarURL string) error {
+	return r.db.
+		Model(&UserProfile{}).
+		Where("user_id = ?", userID).
+		Update("avatar_url", avatarURL).Error
+}
+
+func (r *Repository) UpdateIdentityCardLast4(userID uint, last4 string) error {
+	return r.db.
+		Model(&UserProfile{}).
+		Where("user_id = ?", userID).
+		Update("identity_card_last4", last4).Error
 }
 
 func (r *Repository) FindBasicUserInfo(userID uint) (*BasicUserInfo, error) {
@@ -74,7 +96,7 @@ func (r *Repository) FindBasicUserInfo(userID uint) (*BasicUserInfo, error) {
 
 	err := r.db.
 		Table("users").
-		Select("id, full_name, email, phone, role, is_verified, is_locked").
+		Select("full_name, phone, role").
 		Where("id = ?", userID).
 		First(&user).Error
 

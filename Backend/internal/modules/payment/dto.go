@@ -56,3 +56,46 @@ type IpnPayload struct {
 	ExtraData    string `json:"extraData"`
 	Signature    string `json:"signature"`
 }
+
+type VerifyAccountRequest struct {
+	PartnerCode   string `json:"partnerCode" binding:"required"`
+	AccessKey     string `json:"accessKey" binding:"required"`
+	RequestID     string `json:"requestId" binding:"required"`
+	AccountNumber string `json:"accountNumber" binding:"required"`
+	Signature     string `json:"signature" binding:"required"`
+}
+
+type VerifyAccountResponse struct {
+	PartnerCode   string `json:"partnerCode"`
+	RequestID     string `json:"requestId"`
+	AccountNumber string `json:"accountNumber"`
+	AccountName   string `json:"accountName"`
+	AccountStatus string `json:"accountStatus"`
+	ResultCode    int    `json:"resultCode"`
+	Message       string `json:"message"`
+	Signature     string `json:"signature"`
+}
+
+type MerchantPayoutRequest struct {
+	PartnerCode   string `json:"partnerCode" binding:"required"`
+	AccessKey     string `json:"accessKey" binding:"required"`
+	RequestID     string `json:"requestId" binding:"required"`
+	OrderID       string `json:"orderId" binding:"required"`
+	Amount        int64  `json:"amount" binding:"required,gt=0"`
+	AccountNumber string `json:"accountNumber" binding:"required"`
+	OrderInfo     string `json:"orderInfo" binding:"required"`
+	ExtraData     string `json:"extraData"`
+	Signature     string `json:"signature" binding:"required"`
+}
+
+type MerchantPayoutResponse struct {
+	PartnerCode string `json:"partnerCode"`
+	OrderID     string `json:"orderId"`
+	RequestID   string `json:"requestId"`
+	Amount      int64  `json:"amount"`
+	TransID     string `json:"transId,omitempty"`
+	ResultCode  int    `json:"resultCode"`
+	Message     string `json:"message"`
+	Signature   string `json:"signature"`
+}
+

@@ -20,11 +20,14 @@ func RegisterRoutes(
 	adminGroup.Use(AdminOnlyMiddleware())
 
 	{
+		adminGroup.GET("/dashboard", handler.GetDashboard)
+		adminGroup.POST("/step-up", handler.CreateStepUp)
+		adminGroup.GET("/transactions", handler.GetTransactions)
+		adminGroup.GET("/audit-logs", handler.GetAuditLogs)
 		adminGroup.GET("/users", handler.GetAllUsers)
 		adminGroup.GET("/users/:id", handler.GetUserByID)
 		adminGroup.PATCH("/users/:id/lock", handler.LockUser)
 		adminGroup.PATCH("/users/:id/unlock", handler.UnlockUser)
-		adminGroup.POST("/users/:id/accounts", handler.CreateUserAccount)
 		adminGroup.GET("/users/:id/accounts", handler.GetUserAccounts)
 		adminGroup.POST("/create-admin", handler.CreateAdmin)
 		adminGroup.POST("/deposit", handler.Deposit)

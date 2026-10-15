@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // Repository chịu trách nhiệm thao tác database cho auth
@@ -19,25 +20,17 @@ func NewRepository(db *gorm.DB) *Repository {
 	}
 }
 
+func (r *Repository) withDB(db *gorm.DB) *Repository {
+	return &Repository{db: db}
+}
+
+func (r *Repository) WithTx(fn func(tx *gorm.DB) error) error {
+	return r.db.Transaction(fn)
+}
+
 // CreateUser tạo user mới trong database
 func (r *Repository) CreateUser(user *User) error {
 	return r.db.Create(user).Error
-}
-
-// FindUserByEmail tìm user theo email
-func (r *Repository) FindUserByEmail(email string) (*User, error) {
-	var user User
-
-	err := r.db.Where("email = ?", email).First(&user).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-
-		return nil, err
-	}
-
-	return &user, nil
 }
 
 // FindUserByID tìm user theo ID
@@ -78,28 +71,35 @@ func (r *Repository) FindUserByPhone(phone string) (*User, error) {
 	return &user, nil
 }
 
+func (r *Repository) FindUserByEmail(email string) (*User, error) {
+	var user User
+
+	err := r.db.Where("email = ? AND email != ''", email).First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (r *Repository) UpdateUserPasswordByEmail(email string, passwordHash string) error {
+	return r.db.Model(&User{}).
+		Where("email = ? AND email != ''", email).
+		Updates(map[string]interface{}{
+			"password_hash": passwordHash,
+			"session_version": gorm.Expr("session_version + ?", 1),
+		}).Error
+}
+
 func (r *Repository) IncreaseSessionVersion(userID uint) error {
 	return r.db.Model(&User{}).
 		Where("id = ?", userID).
 		Update("session_version", gorm.Expr("session_version + ?", 1)).
 		Error
-}
-
-func (r *Repository) FindSessionVersionByUserID(
-	userID uint,
-) (int, error) {
-
-	var user User
-
-	err := r.db.
-		Select("session_version").
-		First(&user, userID).Error
-
-	if err != nil {
-		return 0, err
-	}
-
-	return user.SessionVersion, nil
 }
 
 func (r *Repository) CreateRefreshToken(
@@ -108,27 +108,18 @@ func (r *Repository) CreateRefreshToken(
 	return r.db.Create(refreshToken).Error
 }
 
-func (r *Repository) HasActiveSession(
-	userID uint,
-) (bool, error) {
-
-	var count int64
-
+func (r *Repository) FindActiveRefreshToken(tokenHash string) (*RefreshToken, error) {
+	var token RefreshToken
 	err := r.db.
-		Model(&RefreshToken{}).
-		Where(
-			"user_id = ? AND is_revoked = ? AND expires_at > ?",
-			userID,
-			false,
-			time.Now(),
-		).
-		Count(&count).Error
-
+		Where("token_hash = ? AND is_revoked = ? AND expires_at > ?", tokenHash, false, time.Now()).
+		First(&token).Error
 	if err != nil {
-		return false, err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
 	}
-
-	return count > 0, nil
+	return &token, nil
 }
 
 func (r *Repository) RevokeAllUserRefreshTokens(
@@ -202,50 +193,70 @@ func (r *Repository) DeleteStaleUserDevices(userID uint, beforeTime time.Time) e
 		Delete(&UserDevice{}).Error
 }
 
-func (r *Repository) CreatePendingLogin(pending *PendingLogin) error {
-	return r.db.Create(pending).Error
-}
-
-func (r *Repository) FindPendingLogin(id string) (*PendingLogin, error) {
-	var pending PendingLogin
-	err := r.db.
-		Where("id = ?", id).
-		First(&pending).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &pending, nil
-}
-
-func (r *Repository) UpdatePendingLoginStatus(id string, status string) error {
-	return r.db.
-		Model(&PendingLogin{}).
-		Where("id = ?", id).
-		Update("status", status).Error
-}
-
-func (r *Repository) LockUser(userID uint) error {
-	return r.db.
-		Model(&User{}).
-		Where("id = ?", userID).
-		Update("is_locked", true).Error
-}
-
-func (r *Repository) DeletePendingLogin(id string) error {
-	return r.db.
-		Where("id = ?", id).
-		Delete(&PendingLogin{}).Error
-}
-
 func (r *Repository) CountUserDevices(userID uint) (int64, error) {
 	var count int64
 	err := r.db.Model(&UserDevice{}).Where("user_id = ?", userID).Count(&count).Error
 	return count, err
 }
 
-func (r *Repository) DeleteUserDeviceByID(id uint) error {
-	return r.db.Delete(&UserDevice{}, id).Error
+func (r *Repository) RecordTOTPUsage(
+	userID uint,
+	timeStep int64,
+	purpose string,
+) error {
+	var count int64
+	if err := r.db.Model(&TOTPUsage{}).
+		Where("user_id = ? AND time_step = ?", userID, timeStep).
+		Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		return errors.New("TOTP_ALREADY_USED")
+	}
+	return r.db.Create(&TOTPUsage{
+		UserID:   userID,
+		TimeStep: timeStep,
+		Purpose:  purpose,
+	}).Error
+}
+
+func (r *Repository) RecordTOTPFailure(
+	userID uint,
+	now time.Time,
+	maxAttempts int,
+	lockDuration time.Duration,
+) (*time.Time, error) {
+	var lockedUntil *time.Time
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		var user User
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			First(&user, userID).Error; err != nil {
+			return err
+		}
+		if user.TOTPLockedUntil != nil && user.TOTPLockedUntil.After(now) {
+			lockedUntil = user.TOTPLockedUntil
+			return nil
+		}
+		user.TOTPFailedAttempts++
+		user.TOTPLockedUntil = nil
+		if user.TOTPFailedAttempts >= maxAttempts {
+			lock := now.Add(lockDuration)
+			user.TOTPLockedUntil = &lock
+			lockedUntil = &lock
+		}
+		return tx.Model(&user).Updates(map[string]interface{}{
+			"totp_failed_attempts": user.TOTPFailedAttempts,
+			"totp_locked_until":    user.TOTPLockedUntil,
+		}).Error
+	})
+	return lockedUntil, err
+}
+
+func (r *Repository) ResetTOTPFailures(userID uint) error {
+	return r.db.Model(&User{}).
+		Where("id = ?", userID).
+		Updates(map[string]interface{}{
+			"totp_failed_attempts": 0,
+			"totp_locked_until":    nil,
+		}).Error
 }

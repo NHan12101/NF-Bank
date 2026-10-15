@@ -1,38 +1,36 @@
 package auth
 
 type RegisterRequest struct {
-	Email      string `json:"email" binding:"required,email"`
-	FullName   string `json:"full_name" binding:"required"`
-	Phone      string `json:"phone" binding:"required"`
-	Password   string `json:"password" binding:"required,min=8"`
-	OTPChannel string `json:"otp_channel" binding:"required,oneof=email sms"`
+	FullName    string `json:"full_name" binding:"required"`
+	Phone       string `json:"phone" binding:"required"`
+	Password    string `json:"password" binding:"required,min=6"`
+	IDToken     string `json:"id_token" binding:"required"`
+	Email       string `json:"email"`
+	Gender      string `json:"gender"`
+	DateOfBirth string `json:"date_of_birth"`
+	Address     string `json:"address"`
 }
 
 type LoginRequest struct {
-	Email    string `json:"email" binding:"required"`
-	Password string `json:"password" binding:"required"`
-	TOTPCode string `json:"totp_code"`
-}
-
-type RefreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
+	Phone       string `json:"phone" binding:"required"`
+	Password    string `json:"password" binding:"required"`
+	TOTPCode    string `json:"totp_code"`
+	IsBiometric bool   `json:"is_biometric"`
 }
 
 type AuthResponse struct {
-	AccessToken         string       `json:"access_token,omitempty"`
-	RefreshToken        string       `json:"-"`
-	User                UserResponse `json:"user,omitempty"`
-	PendingVerification bool         `json:"pending_verification,omitempty"`
-	PendingID           string       `json:"pending_id,omitempty"`
-	DeviceID            string       `json:"device_id,omitempty"`
-	SMSAuthRequired     bool         `json:"sms_auth_required,omitempty"`
-	Phone               string       `json:"phone,omitempty"`
+	AccessToken     string       `json:"access_token,omitempty"`
+	RefreshToken    string       `json:"-"`
+	User            UserResponse `json:"user,omitempty"`
+	DeviceID        string       `json:"device_id,omitempty"`
+	SMSAuthRequired bool         `json:"sms_auth_required,omitempty"`
+	TOTPRequired    bool         `json:"totp_required,omitempty"`
+	Phone           string       `json:"phone,omitempty"`
 }
 
 type UserResponse struct {
 	ID         uint   `json:"id"`
 	FullName   string `json:"full_name"`
-	Email      string `json:"email"`
 	Phone      string `json:"phone"`
 	Role       string `json:"role"`
 	IsVerified bool   `json:"is_verified"`
@@ -41,26 +39,16 @@ type UserResponse struct {
 type ChangePasswordRequest struct {
 	OldPassword string `json:"old_password" binding:"required"`
 	NewPassword string `json:"new_password" binding:"required,min=8"`
-}
-
-type ForgotPasswordRequest struct {
-	Email string `json:"email" binding:"required,email"`
+	IDToken     string `json:"id_token" binding:"required"`
 }
 
 type ResetPasswordRequest struct {
-	Email       string `json:"email" binding:"required,email"`
-	OTP         string `json:"otp" binding:"required,len=6"`
+	Phone       string `json:"phone" binding:"required"`
+	IDToken     string `json:"id_token" binding:"required"`
 	NewPassword string `json:"new_password" binding:"required,min=8"`
 }
 
-type ConfirmRegisterRequest struct {
-	Email   string `json:"email" binding:"required"`
-	OTP     string `json:"otp"`
-	IDToken string `json:"id_token"`
-}
-
 type ConfirmLoginRequest struct {
-	Email   string `json:"email" binding:"required"`
-	OTP     string `json:"otp"`
-	IDToken string `json:"id_token"`
+	Phone   string `json:"phone" binding:"required"`
+	IDToken string `json:"id_token" binding:"required"`
 }

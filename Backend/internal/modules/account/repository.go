@@ -16,6 +16,10 @@ func NewRepository(db *gorm.DB) *Repository {
 	}
 }
 
+func (r *Repository) withDB(db *gorm.DB) *Repository {
+	return &Repository{db: db}
+}
+
 func (r *Repository) CreateAccount(account *Account) error {
 	return r.db.Create(account).Error
 }
@@ -29,20 +33,6 @@ func (r *Repository) FindAccountsByUserID(userID uint) ([]Account, error) {
 		Find(&accounts).Error
 
 	return accounts, err
-}
-
-func (r *Repository) FindAccountByID(accountID uint) (*Account, error) {
-	var account Account
-
-	err := r.db.First(&account, accountID).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	return &account, nil
 }
 
 func (r *Repository) FindAccountByNumber(accountNumber string) (*Account, error) {
@@ -59,25 +49,15 @@ func (r *Repository) FindAccountByNumber(accountNumber string) (*Account, error)
 	return &account, nil
 }
 
-func (r *Repository) FindByUserIDAndType(
-	userID uint,
-	accountType string,
-) (*Account, error) {
-
+func (r *Repository) FindPaymentAccountByUserID(userID uint) (*Account, error) {
 	var account Account
-
-	err := r.db.
-		Where("user_id = ? AND account_type = ?", userID, accountType).
-		First(&account).Error
-
+	err := r.db.Where("user_id = ? AND account_type = ?", userID, "PAYMENT").First(&account).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-
 		return nil, err
 	}
-
 	return &account, nil
 }
 
@@ -93,4 +73,3 @@ func (r *Repository) FindUserRoleByID(userID uint) (string, error) {
 	}
 	return role, nil
 }
-

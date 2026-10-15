@@ -103,3 +103,61 @@ func (h *Handler) GetPaymentStatus(c *gin.Context) {
 
 	c.JSON(http.StatusOK, res)
 }
+
+// TestCreatePayment API tạo phiên thanh toán giả lập cho môi trường phát triển
+func (h *Handler) TestCreatePayment(c *gin.Context) {
+	var req struct {
+		Amount    int64  `json:"amount" binding:"required,gt=0"`
+		OrderInfo string `json:"order_info" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Dữ liệu không hợp lệ", err)
+		return
+	}
+
+	token, err := h.service.TestCreatePayment(req.Amount, req.OrderInfo)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	response.Success(c, http.StatusOK, "Tạo phiên thanh toán thử nghiệm thành công", gin.H{
+		"payment_token": token,
+	})
+}
+
+// VerifyAccount API xác thực số tài khoản người dùng cho Merchant
+func (h *Handler) VerifyAccount(c *gin.Context) {
+	var req VerifyAccountRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Dữ liệu không hợp lệ", err)
+		return
+	}
+
+	res, err := h.service.VerifyAccount(req)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
+// MerchantPayout API thực hiện rút tiền/chuyển tiền từ Merchant sang tài khoản người dùng
+func (h *Handler) MerchantPayout(c *gin.Context) {
+	var req MerchantPayoutRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Dữ liệu không hợp lệ", err)
+		return
+	}
+
+	res, err := h.service.MerchantPayout(req)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
