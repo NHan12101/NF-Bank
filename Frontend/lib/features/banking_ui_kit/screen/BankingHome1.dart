@@ -144,6 +144,48 @@ class BankingHome1State extends State<BankingHome1> {
     );
   }
 
+  void _openSavings() {
+    final isEn = LanguageController.instance.isEnglish;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(
+            backgroundColor: const Color(0xFF562875),
+            foregroundColor: Colors.white,
+            iconTheme: const IconThemeData(color: Colors.white),
+            title: Text(
+              isEn ? 'Online Savings' : 'Tiết kiệm trực tuyến',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+          body: const SavingsPage(),
+        ),
+      ),
+    );
+  }
+
+  void _openTransactions() {
+    final isEn = LanguageController.instance.isEnglish;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(
+            backgroundColor: const Color(0xFF562875),
+            foregroundColor: Colors.white,
+            iconTheme: const IconThemeData(color: Colors.white),
+            title: Text(
+              isEn ? 'Transactions' : 'Lịch sử giao dịch',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+          body: const TransactionsPage(),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -417,7 +459,7 @@ class BankingHome1State extends State<BankingHome1> {
                             icon: Icons.savings_rounded,
                             label: isEn ? 'Savings' : 'Tiết kiệm',
                             color: const Color(0xFF00B0FF),
-                            onTap: () => widget.onSelectTab?.call(3),
+                            onTap: _openSavings,
                           ),
                           _buildQuickActionButton(
                             icon: Icons.qr_code_2_rounded,
@@ -460,35 +502,35 @@ class BankingHome1State extends State<BankingHome1> {
                               label: isEn ? 'Internal' : 'Chuyển NF',
                               bgColor: const Color(0xFFF7941D).withOpacity(0.12),
                               iconColor: const Color(0xFFF7941D),
-                              onTap: () => widget.onSelectTab?.call(1),
+                              onTap: () => widget.onSelectTab?.call(3),
                             ),
                             _buildGridTile(
                               icon: Icons.flash_on_rounded,
                               label: isEn ? 'Napas 24/7' : 'Chuyển 24/7',
                               bgColor: const Color(0xFF562875).withOpacity(0.12),
                               iconColor: const Color(0xFF562875),
-                              onTap: () => widget.onSelectTab?.call(1),
+                              onTap: () => widget.onSelectTab?.call(3),
                             ),
                             _buildGridTile(
                               icon: Icons.receipt_long_rounded,
                               label: isEn ? 'Bills' : 'Hóa đơn',
                               bgColor: Colors.blue.withOpacity(0.12),
                               iconColor: Colors.blue,
-                              onTap: () => widget.onSelectTab?.call(2),
+                              onTap: () => widget.onSelectTab?.call(1),
                             ),
                             _buildGridTile(
                               icon: Icons.account_balance_wallet_rounded,
                               label: isEn ? 'Open Savings' : 'Mở Tiết kiệm',
                               bgColor: Colors.green.withOpacity(0.12),
                               iconColor: Colors.green,
-                              onTap: () => widget.onSelectTab?.call(3),
+                              onTap: _openSavings,
                             ),
                             _buildGridTile(
                               icon: Icons.history_rounded,
                               label: isEn ? 'Statement' : 'Biến động',
                               bgColor: Colors.purple.withOpacity(0.12),
                               iconColor: Colors.purple,
-                              onTap: () => widget.onSelectTab?.call(2),
+                              onTap: _openTransactions,
                             ),
                             _buildGridTile(
                               icon: Icons.credit_card_rounded,
@@ -537,7 +579,7 @@ class BankingHome1State extends State<BankingHome1> {
                               ),
                             ),
                             TextButton(
-                              onPressed: () => widget.onSelectTab?.call(2),
+                              onPressed: _openTransactions,
                               child: Text(
                                 isEn ? 'View all' : 'Xem tất cả',
                                 style: const TextStyle(
